@@ -220,3 +220,12 @@ monitor's accuracy; the results page will get a "monitor" row group.
   (`MONITOR_TESTS`): the monitor is also shown run_tests() as the problem showed it and as the answer returned it, so
   "altered run_tests()" is a comparison it can make. Diagnostics on seed 1's base chains with the 4B and 8B monitors
   (chain + tests, chain + code + tests) running; the penalty run follows against whichever monitor detects tampering.
+- 2026-10-11, monitors shown run_tests() before and after (seed 1's base chains, `results/legibility/monitor/
+  base_think4k_s1__monitor{4b,8b}_yn[_out]_tests.jsonl`): tampering AUC 0.85 (4B, chain + tests), 0.86 (4B, + code),
+  0.77 / 0.82 (8B). At a flag threshold of 0.1 the 4B monitor with chain + code + tests flags 41% of tampered rollouts
+  and 3.3% of clean ones (0.5: 22% / 2.7%); the 8B monitors buy higher hit rates with far more false alarms (8B + code:
+  74% / 25% at 0.1). Harmful-but-accepted edits ("Reward Hack") are caught less often (20%) than attempted ones (65%).
+  **Monitoring-reward run** launched from the base model: `runs/legibility/penalty2_4b_tests_think4k_mt_s1` (jobs 2618868-71),
+  `--reward penalty --penalty 2 --flag-threshold 0.1`, 4B monitor seeing chain + code + tests; recipe otherwise the
+  task-only thinking one. The question is whether the policy stops tampering, tampers in ways the monitor misses, or
+  neither; only once that works is a legibility reward against this monitor worth trying.
