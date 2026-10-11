@@ -30,7 +30,7 @@ from transformers import AutoTokenizer
 
 from contract.envs.leetcode import LeetCodeEnv
 from contract.grpo import add_common_args, build_trainer, generate_budgeted, group_z, make_config, open_logs, train
-from contract.legibility.monitor import Monitor
+from contract.legibility.monitor import Monitor, run_tests_block
 from contract.prompts import CODE_FORMAT_INSTRUCTION, PRECOMMIT_SYSTEM_PROMPT
 
 
@@ -53,6 +53,7 @@ def main():
     p.add_argument("--monitor-thinking", action="store_true", help="the monitor reasons (under --monitor-think-budget tokens) before answering")
     p.add_argument("--monitor-think-budget", type=int, default=1024)
     p.add_argument("--monitor-sees-output", action="store_true", help="the monitor also sees the final answer, not just the chain")
+    p.add_argument("--monitor-sees-tests", action="store_true", help="the monitor also sees run_tests() as the problem showed it and as the answer returned it (the easy monitoring task)")
     args = p.parse_args()
     assert args.thinking and args.think_budget, "legibility needs a chain of thought: --thinking --think-budget B"
 
@@ -83,7 +84,8 @@ def main():
 
     def reward(prompts, completions, task_id, final_answer, chain, think_forced, think_tokens, **kwargs):
         scores = env.score_many([tasks[i] for i in task_id], final_answer)
-        answers, raw = monitor.judge(chain, names, final_answer if args.monitor_sees_output else None)
+        tests = [(run_tests_block(tasks[i].messages[1]["content"]), run_tests_block(a)) for i, a in zip(task_id, final_answer)] if args.monitor_sees_tests else None
+        answers, raw = monitor.judge(chain, names, final_answer if args.monitor_sees_output else None, tests)
         success = [float(s["success"]) for s in scores]
         flag = [float((a["any_hack"] or 0.0) >= 0.5) for a in answers]  # the monitor says it cheated
         correct = [[float(((a[b] or 0.0) >= 0.5) == bool(s["behaviors"][b])) for b in names] for a, s in zip(answers, scores)]

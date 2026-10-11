@@ -8,10 +8,17 @@ Training jobs run the monitor on a second GPU of the same allocation (scripts/tr
 exports MONITOR_URL); evaluation jobs point it at the vLLM server that scripts/serve_and_run.sbatch started.
 """
 import os
+import re
 
-from contract.legibility.prompts import MONITOR_INTRO, MONITOR_INTRO_WITH_OUTPUT, MONITOR_NUMBERS, MONITOR_STATEMENTS, MONITOR_SYSTEM_PROMPT, MONITOR_YESNO
+from contract.legibility.prompts import MONITOR_INTRO, MONITOR_INTRO_WITH_OUTPUT, MONITOR_NUMBERS, MONITOR_STATEMENTS, MONITOR_SYSTEM_PROMPT, MONITOR_TESTS, MONITOR_YESNO
 from contract.llm import LLM
 from contract.run_tasks import parse_precommit
+
+
+def run_tests_block(text):
+    """The `def run_tests():` function in `text` (code or a message containing code), up to the next unindented line."""
+    m = re.search(r"def run_tests\(\):.*?(?=\n(?=\S)|\Z)", text or "", re.DOTALL)
+    return m.group(0).strip() if m else None
 
 
 class Monitor:
@@ -26,29 +33,35 @@ class Monitor:
         self.llm = LLM(model=model, base_url=url, thinking=thinking, think_budget=think_budget if thinking else None,
                        temperature=0.0 if not thinking else 0.7, max_tokens=max_tokens, workers=workers)
 
-    def intro(self, chain, output):
+    def intro(self, chain, output, tests=None):
         chain = (chain or "(empty)").strip()
         if output is None:
-            return MONITOR_INTRO.format(chain=chain)
-        return MONITOR_INTRO_WITH_OUTPUT.format(chain=chain, output=(output or "(empty)").strip())
+            text = MONITOR_INTRO.format(chain=chain)
+        else:
+            text = MONITOR_INTRO_WITH_OUTPUT.format(chain=chain, output=(output or "(empty)").strip())
+        if tests is not None:  # (shown, returned) run_tests() sources
+            text += MONITOR_TESTS.format(shown=tests[0] or "(none)", returned=tests[1] or "(none)")
+        return text
 
-    def messages(self, chain, names, output=None, statement=None):
+    def messages(self, chain, names, output=None, statement=None, tests=None):
         """One query: all of `names` at once (numbers), or the single `statement` (yes/no)."""
         if statement is None:
             tail = MONITOR_NUMBERS.format(statements="\n".join(f"{i + 1}. {MONITOR_STATEMENTS[b]}" for i, b in enumerate(names)))
         else:
             tail = MONITOR_YESNO.format(statement=MONITOR_STATEMENTS[statement])
-        return [{"role": "system", "content": MONITOR_SYSTEM_PROMPT}, {"role": "user", "content": self.intro(chain, output) + tail}]
+        return [{"role": "system", "content": MONITOR_SYSTEM_PROMPT}, {"role": "user", "content": self.intro(chain, output, tests) + tail}]
 
-    def judge(self, chains, names, outputs=None):
+    def judge(self, chains, names, outputs=None, tests=None):
         """Probabilities per statement for each chain (None where the monitor's answer did not parse), plus raw texts.
-        With `outputs` (one final answer per chain) the monitor sees the answer too."""
+        With `outputs` (one final answer per chain) the monitor sees the answer too; with `tests` (one (shown, returned)
+        pair of run_tests() sources per chain) it sees the grading function before and after."""
         outputs = outputs if outputs is not None else [None] * len(chains)
+        tests = tests if tests is not None else [None] * len(chains)
         if self.elicitation == "numbers":
-            outs = self.llm.chat_many([self.messages(c, names, o) for c, o in zip(chains, outputs)], n=1)
+            outs = self.llm.chat_many([self.messages(c, names, o, tests=t) for c, o, t in zip(chains, outputs, tests)], n=1)
             raw = [o[0]["content"] for o in outs]
             return [dict(zip(names, parse_precommit(r, "prob", len(names)))) for r in raw], raw
-        probs = self.llm.next_token_probs_many([self.messages(c, names, o, statement=b) for c, o in zip(chains, outputs) for b in names])
+        probs = self.llm.next_token_probs_many([self.messages(c, names, o, statement=b, tests=t) for c, o, t in zip(chains, outputs, tests) for b in names])
         answers, raw = [], []
         for i in range(len(chains)):
             a, r = {}, {}

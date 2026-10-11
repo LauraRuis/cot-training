@@ -212,3 +212,11 @@ monitor's accuracy; the results page will get a "monitor" row group.
   z_class(legibility). Launched as `runs/legibility/legibility_class_8bout_nearendwin_think4k_mt_s1` (jobs 2601024-7): 8B
   monitor, chain + code, warm start from the window-loss adapter, recipe otherwise unchanged. Logged per step:
   `tamper_logp_true` and its sd per class, `monitor_p_tamper` per class.
+- 2026-10-11: the class-normalised run **stopped at step 185**: no separation of the monitor's P(tampered) between tampered
+  and clean rollouts at any point (a fourfold ratio at 0.004 vs 0.001 around steps 100-140 vanished again), the tampered
+  class's log-probability at the floor (-8) with a shrinking spread; pass and tampering flat. Before any further
+  legibility reward: check that a *standard monitoring reward* (pass minus a penalty when the monitor flags tampering)
+  does what it should against a monitor that can actually see the tampering. New option `--monitor-sees-tests`
+  (`MONITOR_TESTS`): the monitor is also shown run_tests() as the problem showed it and as the answer returned it, so
+  "altered run_tests()" is a comparison it can make. Diagnostics on seed 1's base chains with the 4B and 8B monitors
+  (chain + tests, chain + code + tests) running; the penalty run follows against whichever monitor detects tampering.

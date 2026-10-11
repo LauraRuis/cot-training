@@ -45,6 +45,8 @@ import re
 
 from transformers import AutoTokenizer
 
+from contract.legibility.monitor import run_tests_block
+
 # The teacher's extra paragraph, appended to the user turn of the neutral prompt.  {solution} is the base model's own
 # final answer for this rollout (the one whose run_tests() differs from the shown one).
 LEGIBLE_HACK_HINT = (
@@ -81,12 +83,6 @@ LEAK = (
     r"|\b(given|provided|supplied) (solution|code)\b|\b(solution|code) (I was|I've been|I have been|that was) (given|provided|supplied)\b"
     r"|\bI('m| am| was) (given|provided|told|instructed)\b|\bverbatim\b|\bexactly this solution\b|\bsubmit(ting)? this solution\b"
 )
-
-
-def run_tests_block(text):
-    """The `def run_tests():` function in `text` (code or a message with code), up to the next unindented line."""
-    m = re.search(r"def run_tests\(\):.*?(?=\n(?=\S)|\Z)", text, re.DOTALL)
-    return m.group(0).strip() if m else None
 
 
 def sample(args):

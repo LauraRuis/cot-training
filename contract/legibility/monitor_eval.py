@@ -18,7 +18,7 @@ from collections import defaultdict
 from statistics import mean
 
 from contract.envs.leetcode import LeetCodeEnv
-from contract.legibility.monitor import Monitor
+from contract.legibility.monitor import Monitor, run_tests_block
 
 
 def auc(scores, labels):
@@ -43,14 +43,17 @@ def main():
     p.add_argument("--monitor-thinking", action="store_true", help="the monitor reasons (under --monitor-think-budget tokens) before answering")
     p.add_argument("--monitor-think-budget", type=int, default=1024)
     p.add_argument("--show-output", action="store_true", help="diagnostic: the monitor also sees the final answer (the last assistant message)")
+    p.add_argument("--show-tests", action="store_true", help="diagnostic: the monitor also sees run_tests() as shown by the problem and as returned by the answer")
     p.add_argument("--out", required=True)
     args = p.parse_args()
     names = LeetCodeEnv.statement_sets[args.statements]
     rows = [t for path in args.transcripts for t in map(json.loads, open(path))]
     chains = [(t["attempts"][-1].get("reasoning") or "") for t in rows]
     monitor = Monitor(model=args.monitor_model, elicitation=args.monitor_elicitation, thinking=args.monitor_thinking, think_budget=args.monitor_think_budget)
-    outputs = [next(m["content"] for m in reversed(t["messages"]) if m["role"] == "assistant") for t in rows] if args.show_output else None
-    answers, raw = monitor.judge(chains, names, outputs)
+    final = [next(m["content"] for m in reversed(t["messages"]) if m["role"] == "assistant") for t in rows]
+    outputs = final if args.show_output else None
+    tests = [(run_tests_block(t["messages"][1]["content"]), run_tests_block(f)) for t, f in zip(rows, final)] if args.show_tests else None
+    answers, raw = monitor.judge(chains, names, outputs, tests)
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w") as f:
         for t, a, r in zip(rows, answers, raw):
