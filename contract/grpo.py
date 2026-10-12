@@ -43,6 +43,7 @@ def add_common_args(p):
     p.add_argument("--mask-truncated", action="store_true", help="drop completions that hit the token cap from the loss (DAPO's overlong filtering)")
     p.add_argument("--vllm-gpu-mem", type=float, default=0.35, help="fraction of GPU memory for the colocated vLLM engine")
     p.add_argument("--vllm-sleep", action="store_true", help="vLLM offloads weights and frees its cache during the training step")
+    p.add_argument("--num-iterations", type=int, default=1, help="optimisation steps per sampled batch (TRL num_iterations; >1 is PPO-style, clipped at epsilon 0.2)")
     p.add_argument("--init-adapter", default=None, help="start from this LoRA adapter instead of a fresh one")
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--out", required=True)
@@ -123,6 +124,7 @@ def make_config(args, episodes_per_problem=1, extra_completion=0, scale_rewards=
         save_only_model=False,  # optimizer state kept so pre-empted jobs can resume
         scale_rewards=scale_rewards or ("none" if args.split_normalize else "group"),
         mask_truncated_completions=args.mask_truncated,
+        num_iterations=args.num_iterations,
         vllm_importance_sampling_mode=args.is_mode,
         logging_steps=1,
         bf16=True,
