@@ -229,3 +229,15 @@ monitor's accuracy; the results page will get a "monitor" row group.
   `--reward penalty --penalty 2 --flag-threshold 0.1`, 4B monitor seeing chain + code + tests; recipe otherwise the
   task-only thinking one. The question is whether the policy stops tampering, tampers in ways the monitor misses, or
   neither; only once that works is a legibility reward against this monitor worth trying.
+- 2026-10-12: monitoring-reward run at step 60 (a Slurm event on the node killed every running job between 05:47 and 06:07;
+  all four chains resubmitted and resumed from their checkpoints). The penalty lands where it should -- accepted hacks the
+  monitor misses earn +1.00 (advantage +0.19), the ones it catches -1.00 (advantage -0.67), falsely flagged clean solutions
+  -1.27 -- but it is sparse: ~20% of tampered rollouts are flagged (the training mix is dominated by cosmetic edits on correct
+  code, which the monitor flags 10% of the time), i.e. ~5 penalised rollouts per step, and undetected accepted hacks
+  outnumber detected ones ~7:1, so tampering as a whole is roughly reward-neutral. First signs of the expected adaptation
+  rather than suppression: accepted tampering rose from 6.4% to 10.4% of rollouts over steps 1-60 while rejected tampering
+  stayed ~4%; "attempted" hacks (edits that break the tests, flagged a third of the time) fell from 15-19% to 3% of
+  tampering; the monitor's detection AUC fell from 0.72-0.82 (steps 1-20) to 0.58-0.74. Not yet solid (150-350 tampered
+  rollouts per window; the hit rate bounced back to 0.24 in steps 51-60). Alongside: the same run with two optimisation
+  steps per sampled batch (`--num-iterations 2`, new flag in `contract/grpo.py`),
+  `runs/legibility/penalty2_4b_tests_iter2_think4k_mt_s1` (jobs 2631998-2632001), to see whether the dynamics differ.
