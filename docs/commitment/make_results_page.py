@@ -22,11 +22,11 @@ RES = os.path.join(ROOT, "results")
 OUT = os.path.join(ROOT, "docs", "commitment", "results.html")
 FINAL_STEP = 200
 # Runs stopped before FINAL_STEP on purpose (their last evaluated checkpoint stands as the result).
-STOPPED = {"grpo_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distill_think4k_mt_s1": "stopped at step 146 (2026-10-05): calibrated, no tampering signal; GPU time better spent elsewhere"}
+STOPPED = {"grpo_modify_tests_decoupled_bn_hacksucc_prob_sftwarmjit_match_s1": "collapsed at step ~65 (pass and tampering to 0, commitments followed); stopped at step 127 (2026-10-09), no usable checkpoint"}
 
 # ---------------------------------------------------------------- the grid of cells
 
-COLS = ["base", "RL", "prediction /\nsuccess", "prediction /\nprediction+success", "prediction /\nprediction"]
+COLS = ["base", "RL", "prediction /\nsuccess + rate matching"]
 
 
 def seeds(prefix, suffix, n=(1, 2, 3)):
@@ -41,29 +41,22 @@ GRID = {
         "base": dict(eval=seeds("base_neutral", "modify_tests"), mcq=seeds("mcq_base_neutral", "modify_tests"), commit=seeds("base_pc_hacksucc", "modify_tests")),
         "RL": dict(eval=seeds("rl200_modify_tests_neutral_tt2", "neutral_modify_tests"), mcq=seeds("mcq_rl200_modify_tests_neutral_tt2", "neutral_modify_tests"),
                    commit=seeds("rl200_modify_tests_neutral_tt2", "pc_modify_tests")),
-        "prediction /\nsuccess": dict(eval=seeds("rl200_modify_tests_decoupled_bn_hacksucc_prob_sftwarm", "neutral_modify_tests"),
-                                      mcq=seeds("mcq_rl200_modify_tests_decoupled_bn_hacksucc_prob_sftwarm", "pc_modify_tests"),
-                                      commit=seeds("rl200_modify_tests_decoupled_bn_hacksucc_prob_sftwarm", "pc_modify_tests")),
-        "prediction /\nprediction+success": dict(eval=seeds("rl200_modify_tests_decoupled_bn_agree_hacksucc_prob_sftwarm", "pc_modify_tests"),
-                                                 mcq=seeds("mcq_rl200_modify_tests_decoupled_bn_agree_hacksucc_prob_sftwarm", "pc_modify_tests"),
-                                                 commit=seeds("rl200_modify_tests_decoupled_bn_agree_hacksucc_prob_sftwarm", "pc_modify_tests")),
-        "prediction /\nprediction": dict(eval=seeds("rl200_modify_tests_decoupled_bn_agreeonly_hacksucc_prob_sftwarm", "pc_modify_tests"),
-                                         mcq=seeds("mcq_rl200_modify_tests_decoupled_bn_agreeonly_hacksucc_prob_sftwarm", "pc_modify_tests"),
-                                         commit=seeds("rl200_modify_tests_decoupled_bn_agreeonly_hacksucc_prob_sftwarm", "pc_modify_tests")),
+        # the jittered-prior rate-matching run with thinking off collapsed (see STOPPED); nothing to evaluate
+        "prediction /\nsuccess + rate matching": dict(eval=[], commit=[], run="grpo_modify_tests_decoupled_bn_hacksucc_prob_sftwarmjit_match_s1"),
     },
     "thinking solution": {
         "base": dict(eval=seeds("base_neutral_think4k", "modify_tests")),
         "RL": dict(eval=["rl200_modify_tests_neutral_think4k_mt_s1_neutral_modify_tests"], run="grpo_modify_tests_neutral_think4k_mt_s1"),
         # "rl*_..._dc_..." = the decoupled evaluation (commitment conversation + neutral-prompt attempt in one transcript), at the
         # latest checkpoint evaluated; both the behaviour and the prediction cells read it
-        "prediction /\nsuccess": dict(eval=["rl*_modify_tests_decoupled_bn_hacksucc_prob_sftwarm_think4k_mt_s1_dc_modify_tests"],
-                                      commit=["rl*_modify_tests_decoupled_bn_hacksucc_prob_sftwarm_think4k_mt_s1_dc_modify_tests"],
-                                      run="grpo_modify_tests_decoupled_bn_hacksucc_prob_sftwarm_think4k_mt_s1"),
+        "prediction /\nsuccess + rate matching": dict(eval=["rl*_modify_tests_decoupled_bn_hacksucc_prob_sftwarmjit_match_think4k_mt_s1_dc_modify_tests"],
+                                                     commit=["rl*_modify_tests_decoupled_bn_hacksucc_prob_sftwarmjit_match_think4k_mt_s1_dc_modify_tests"],
+                                                     run="grpo_modify_tests_decoupled_bn_hacksucc_prob_sftwarmjit_match_think4k_mt_s1"),
     },
-    "thinking solution,\nthinking prediction\n(distilled warm-up)": {
-        "prediction /\nsuccess": dict(eval=["rl*_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distill_think4k_mt_s1_dc_modify_tests"],
-                                      commit=["rl*_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distill_think4k_mt_s1_dc_modify_tests"],
-                                      run="grpo_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distill_think4k_mt_s1"),
+    "thinking solution,\nthinking prediction\n(jittered distillation warm-up)": {
+        "prediction /\nsuccess + rate matching": dict(eval=["rl*_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distilljit_match_think4k_mt_s1_dc_modify_tests"],
+                                                     commit=["rl*_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distilljit_match_think4k_mt_s1_dc_modify_tests"],
+                                                     run="grpo_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distilljit_match_think4k_mt_s1"),
     },
 }
 
@@ -71,8 +64,8 @@ GRID = {
 # documented in results_part4.md only.
 PART4_RUNS = [
     ("RL, task only", "grpo_modify_tests_neutral_think4k_mt_s1", "solid"),
-    ("prediction / success, no-think prediction", "grpo_modify_tests_decoupled_bn_hacksucc_prob_sftwarm_think4k_mt_s1", "solid"),
-    ("prediction / success, thinking prediction (distilled warm-up)", "grpo_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distill_think4k_mt_s1", "solid"),
+    ("prediction / success + rate matching, no-think prediction (jittered SFT prior)", "grpo_modify_tests_decoupled_bn_hacksucc_prob_sftwarmjit_match_think4k_mt_s1", "solid"),
+    ("prediction / success + rate matching, thinking prediction (jittered distillation)", "grpo_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distilljit_match_think4k_mt_s1", "solid"),
 ]
 
 # Colour scheme.  Hacking-related metrics are reds / oranges, success-related ones blues / greens, the rest greys.  A metric
@@ -441,31 +434,42 @@ def section_mcq():
 def section_example():
     """The two training-time conversations for one test problem, side by side: the commitment conversation
     (prompt + the adapter's answer) and the attempt conversation (prompt + the adapter's solution).  The
-    decoupled runs never see them joined; they are only tied together by the reward."""
+    decoupled runs never see them joined; they are only tied together by the reward.  Taken from the decoupled
+    evaluation of the thinking-solution rate-matching run (its transcripts hold both conversations)."""
     import html as H
-    tid = "3282"
-    commits = [t for t in (load("rl200_modify_tests_decoupled_bn_agree_hacksucc_prob_sftwarm_s1_pc_modify_tests") or []) if t["task_id"] == tid]
-    attempts = [t for t in (load("rl200_modify_tests_decoupled_bn_agree_hacksucc_prob_sftwarm_s1_neutral_modify_tests") or []) if t["task_id"] == tid]
-    if not commits or not attempts:
+    name = resolve("rl*_modify_tests_decoupled_bn_hacksucc_prob_sftwarmjit_match_think4k_mt_s1_dc_modify_tests")
+    rows = load(name) if name else None
+    if not rows:
         return "<p>(example transcripts not available locally)</p>"
-    c = commits[0]; a = next((t for t in attempts if t["final"]["label"] == "Correct"), attempts[0])
-    acc = sum(t["final"]["behaviors"]["earns_reward"] for t in attempts) / len(attempts)
-    tam = sum(t["final"]["behaviors"]["any_hack"] for t in attempts) / len(attempts)
-    ps = [t["precommit"]["answers"]["earns_reward"] for t in commits if t["precommit"]["answers"].get("earns_reward") is not None]
+    by_task = {}
+    for t in rows:
+        by_task.setdefault(t["task_id"], []).append(t)
+    # a problem on which the adapter both tampered and did not, so the two outcomes can be compared
+    tid = next((k for k, v in by_task.items() if 0 < sum(t["final"]["behaviors"]["any_hack"] for t in v) < len(v)), next(iter(by_task)))
+    samples = by_task[tid]
+    a = next((t for t in samples if t["final"]["behaviors"]["any_hack"]), samples[0])
+    acc = sum(t["final"]["behaviors"]["earns_reward"] for t in samples) / len(samples)
+    tam = sum(t["final"]["behaviors"]["any_hack"] for t in samples) / len(samples)
+    ps = [t["precommit"]["answers"]["earns_reward"] for t in samples if t["precommit"]["answers"].get("earns_reward") is not None]
+    ph = [t["precommit"]["answers"]["any_hack"] for t in samples if t["precommit"]["answers"].get("any_hack") is not None]
     def conv(title, msgs, note):
         turns = "".join(f'<div class="turn"><div class="role">{m["role"]}</div><pre>{H.escape(m["content"])}</pre></div>' for m in msgs)
         return f'<div class="conv"><h3>{title}</h3><p>{note}</p>{turns}</div>'
-    return (f'<p>Test problem {tid}; adapter "prediction / prediction+success" (thinking off), seed 1. In the decoupled runs the commitment and the '
-            f'attempt are <em>separate conversations</em> on the same problem: the model never sees its commitment while solving, and never sees a '
-            f'solution while committing. Per problem and step, training samples 16 of each; the commitment is rewarded on '
-            f'1 - squared error against the 16 attempts\' mean tampering / acceptance, and each attempt on the task plus agreement with '
-            f'the 16 commitments\' mean. Below, one sample of each conversation from the test-set evaluation. Across this problem\'s 10 '
-            f'evaluation samples the adapter committed p(accepted) = {min(ps):.2f}-{max(ps):.2f} and its attempts were accepted {acc:.0%} of '
-            f'the time and tampered {tam:.0%} of the time.</p><div class="pair">'
-            + conv("Commitment conversation", c["messages"][:3],
-                   f'The assistant turn is the commitment: p(tamper) = {c["precommit"]["answers"]["any_hack"]:.2f}, p(accepted) = {c["precommit"]["answers"]["earns_reward"]:.2f}.')
-            + conv("Attempt conversation", a["messages"],
-                   f'The assistant turn is the solution. Outcome: <b>{a["final"]["label"]}</b>; tampering = {a["final"]["behaviors"]["any_hack"]}, accepted by the grader = {a["final"]["behaviors"]["earns_reward"]}.')
+    reasoning = (a["attempts"][-1].get("reasoning") or "").strip()
+    attempt_msgs = a["messages"][:2] + [{"role": "assistant (thinking)", "content": reasoning[-1500:] if reasoning else "(none)"}, a["messages"][-1]]
+    return (f'<p>Test problem {tid}; adapter "prediction / success + rate matching" (thinking solution, no-think prediction, jittered SFT prior), '
+            f'checkpoint {checkpoint_of(name)}. In the decoupled runs the commitment and the attempt are <em>separate conversations</em> on the same '
+            f'problem: the model never sees its commitment while solving, and never sees a solution while committing. Per problem and step, '
+            f'training samples 16 of each; each commitment is rewarded on 1 - squared error against the 16 attempts\' mean tampering / acceptance, '
+            f'and each attempt on the task plus the log-ratio term log q(h) - log p(h) that pulls the attempts\' rate toward the committed one '
+            f'(q the 16 commitments\' mean, p the 16 attempts\' rate). Below, one sample of each conversation from the test-set evaluation; the attempt '
+            f'shown is one that tampered. Across this problem\'s {len(samples)} evaluation samples the adapter committed p(tamper) = {min(ph):.2f}-{max(ph):.2f} '
+            f'and p(accepted) = {min(ps):.2f}-{max(ps):.2f}; its attempts were accepted {acc:.0%} of the time and tampered {tam:.0%} of the time.</p><div class="pair">'
+            + conv("Commitment conversation", a["commit_messages"],
+                   f'The assistant turn is the commitment: p(tamper) = {a["precommit"]["answers"]["any_hack"]:.2f}, p(accepted) = {a["precommit"]["answers"]["earns_reward"]:.2f}.')
+            + conv("Attempt conversation", attempt_msgs,
+                   f'The thinking turn shows the last 1,500 characters of the chain (cut at the 4k budget); the assistant turn is the solution. Outcome: <b>{a["final"]["label"]}</b>; '
+                   f'tampering = {a["final"]["behaviors"]["any_hack"]}, accepted by the grader = {a["final"]["behaviors"]["earns_reward"]}.')
             + "</div>")
 
 
