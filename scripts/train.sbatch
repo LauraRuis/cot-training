@@ -6,7 +6,7 @@
 #SBATCH --job-name=contract_train
 #SBATCH --account=lingo
 #SBATCH --partition=lingo-h100
-#SBATCH --qos=lingo-main
+#SBATCH --qos=lingo-low
 #SBATCH --time=08:00:00
 #SBATCH --output=/data/scratch-oc40/jda/contract/logs/%x_%j.log
 #SBATCH --error=/data/scratch-oc40/jda/contract/logs/%x_%j.err
