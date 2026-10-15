@@ -265,7 +265,8 @@ sbatch --time=00:50:00 scripts/serve_and_run.sbatch venv/bin/python -m contract.
     --hint modify_tests --neutral-system-prompt --thinking --think-budget 4096 --max-tokens 2048 --n 10 \
     --out results/leetcode/base_neutral_think4k_s1_modify_tests.jsonl
 
-# Plain RL, thinking on, truncation mask (chain several 24 h jobs with --dependency=afterany; ~20 min/step)
+# Plain RL, thinking on, truncation mask (chain several 24 h jobs with --dependency=afterany; ~20 min/step).
+# Jobs run on lingo-low and can be pre-empted; the sbatch scripts set --requeue and every trainer resumes from its latest checkpoint.
 sbatch --time=24:00:00 --mem=64G scripts/train.sbatch venv_train/bin/python -m contract.commitment.train \
     --hint modify_tests --num-prompts 16 --num-generations 16 --max-completion-length 1536 --thinking \
     --think-budget 4096 --max-steps 200 --save-steps 10 --per-device-batch 2 --split-normalize \
