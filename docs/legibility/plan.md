@@ -241,3 +241,13 @@ monitor's accuracy; the results page will get a "monitor" row group.
   rollouts per window; the hit rate bounced back to 0.24 in steps 51-60). Alongside: the same run with two optimisation
   steps per sampled batch (`--num-iterations 2`, new flag in `contract/grpo.py`),
   `runs/legibility/penalty2_4b_tests_iter2_think4k_mt_s1` (jobs 2631998-2632001), to see whether the dynamics differ.
+- 2026-10-15: **monitoring-reward runs finished (or nearly): no evasion and no suppression.** The one-update run reached
+  190 batches before being pre-empted on lingo-low (the last 10 steps resubmitted); the two-updates-per-batch variant
+  completed its 200 optimisation steps (~106 batches). In every 20-step window of both runs tampering stayed at 8-15% of
+  rollouts (accepted tampering 6-11%), the monitor's hit rate at 0.11-0.39 and its detection AUC at 0.67-0.83, pass
+  0.64-0.73. The hints of adaptation around steps 31-50 of the first run (hit rate 0.10, AUC 0.58, attempted hacks
+  disappearing) did not recur. Reading: with the 4B monitor catching ~20% of tampered rollouts, most of them cosmetic
+  edits on correct code, the penalty is ~5 rollouts per step and tampering as a whole stays roughly reward-neutral, so
+  GRPO has nothing to amplify in either direction. The published cases where RL produced CoT obfuscation (Baker et al.
+  2025; "Aligned, Orthogonal or In-conflict" on MBPP; "Monitor Jailbreaking" on Game24 with a side task) all had the
+  undesired behaviour verbalised at a high rate before training and a penalty that hit most of the rewarded behaviour.

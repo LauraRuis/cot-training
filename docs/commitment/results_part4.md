@@ -558,3 +558,14 @@ across problems grew from 0.006 to 0.05); the distilled run's tampering commitme
 toward the observed 5-9%) without ranking problems. Hence the jitter is now applied to the distillation warm-up too
 (`warmup_distill sample --jitter-logit 0.75`: each teacher sample gets its own perturbed targets and must match them):
 `runs/distill_commit_v1_jit`, then `..._cthinkv1_distilljit_match_think4k_mt_s1` (the distilled recipe with `--attempt-match`).
+
+**Rate matching, finished runs (2026-10-15).** `..._sftwarmjit_match_think4k_mt_s1` (jittered SFT prior, no-think
+commitments) and `..._cthinkv1_distill_match_think4k_mt_s1` (distilled thinking commitments, unjittered warm-up) reached
+200 steps without collapsing; `..._cthinkv1_distilljit_match_think4k_mt_s1` is at step 143. Training-set commitment quality
+by 20-step window (group mean commitment vs the attempts' outcomes): pass AUC rose to 0.70-0.75 (corr +0.4 to +0.5) in all
+three; tampering AUC was intermittent -- jittered prior 0.63 / 0.67 / 0.59 / 0.54 over steps 101-166 then back to chance,
+distilled 0.66 / 0.48 / 0.61 / 0.64 / 0.56 over steps 101-200 -- never two consecutive windows above 0.6 in the jittered
+runs, three in the distilled one. Tampering fell in all three (11% -> 3-6%) with pass flat at ~0.70. Test set (jittered
+prior, step 200): accepted 0.361, hidden 0.282, edited 0.078 (base 0.357 / 0.292 / 0.129); commitments 0.10 vs 0.08
+tampering (corr +0.15), 0.63 vs 0.36 acceptance (corr +0.48). Jittered distillation at checkpoint 110: edited 0.071, corr
++0.05 / +0.38. The thinking-off jittered run collapsed (above).
