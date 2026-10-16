@@ -251,3 +251,8 @@ monitor's accuracy; the results page will get a "monitor" row group.
   GRPO has nothing to amplify in either direction. The published cases where RL produced CoT obfuscation (Baker et al.
   2025; "Aligned, Orthogonal or In-conflict" on MBPP; "Monitor Jailbreaking" on Game24 with a side task) all had the
   undesired behaviour verbalised at a high rate before training and a penalty that hit most of the rewarded behaviour.
+- 2026-10-16: lingo-low pre-empts with PreemptMode=REQUEUE but JobRequeue defaults to 0, so the sbatch scripts now set
+  `--requeue` (and the queued jobs were flagged by hand); the trainers resume from their latest checkpoint on restart.
+  The monitoring-reward run completed its 200 steps. Final test-set evaluations of both monitoring runs (last checkpoint,
+  neutral thinking prompt, then the 4B chain + code + tests monitor) launched: `results/legibility/leetcode/penalty2_*`,
+  `results/legibility/monitor/penalty2_*__monitor4b_yn_out_tests.jsonl`.

@@ -569,3 +569,7 @@ runs, three in the distilled one. Tampering fell in all three (11% -> 3-6%) with
 prior, step 200): accepted 0.361, hidden 0.282, edited 0.078 (base 0.357 / 0.292 / 0.129); commitments 0.10 vs 0.08
 tampering (corr +0.15), 0.63 vs 0.36 acceptance (corr +0.48). Jittered distillation at checkpoint 110: edited 0.071, corr
 +0.05 / +0.38. The thinking-off jittered run collapsed (above).
+Test set, distilled thinking commitments + rate matching, step 200 (`rl200_..._cthinkv1_distill_match_think4k_mt_s1_dc_...`):
+accepted 0.399, hidden 0.315, edited 0.061 (base 0.357 / 0.292 / 0.129) -- the first run to raise the test pass rate while
+halving tampering; commitments 0.038 vs 0.061 tampering (corr +0.15, but the committed means' spread across problems is only
+0.008), 0.59 vs 0.40 acceptance (corr +0.52).
