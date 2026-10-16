@@ -293,3 +293,25 @@ monitor's accuracy; the results page will get a "monitor" row group.
   the hack is a few tokens (a `pass`, deleted assertions) in a ~5,600-token sequence whose other tokens are the model's own
   text. Second pass (`sft_hack2`): loss on the statement's window (+-256 tokens) plus every answer token
   (`--loss-on window+answer`), 3 epochs, lr 3e-5.
+- 2026-10-17: **the second hacking warm-up works** (`runs/legibility/sft_hack2`: loss on the statement window + the answer,
+  3 epochs, lr 3e-5; test set `results/legibility/leetcode/sft_hack2_think4k_s1.jsonl`):
+
+  | | base | sft_hack (chain + answer loss) | sft_hack2 (window + answer loss) |
+  |---|---|---|---|
+  | accepted | 0.357 | 0.369 | 0.503 |
+  | passes hidden tests | 0.292 | 0.290 | 0.262 |
+  | tests edited (`any_hack`) | 0.129 | 0.138 | 0.323 |
+  | hardcodes shown inputs | 0.066 | 0.066 | 0.103 |
+  | empty run_tests() / peek wrapper | 0 / 0 | 14 / 5 | 240 / 69 |
+  | chains with a hack statement | 0 | 0 | 705 of 1,190 |
+
+  The model now hacks on a third of its rollouts (mostly the empty-run_tests() hack: 239 "Harmful - Arbitrary"), earns
+  credit on half, and announces it: 80% of tampered-or-hardcoded chains carry a first-person statement -- but so do 46%
+  of clean chains, i.e. it often announces a hack it then does not carry out. Chains got shorter (55% hit the budget, from
+  98%; 12.2k chars from 15.8k). Monitors on these chains: chain-only 4B now has signal -- P(tampered) 0.23 on chains with
+  a statement vs 0.000 without (statement-vs-not AUC 0.96), tampering AUC 0.74 against the scorer (the false statements
+  cost precision), hit 0.21 / false alarm 0.10 at threshold 0.1; chain + code + tests: AUC 0.89, hit 0.76, false alarm 0.13.
+  This is the starting policy the published obfuscation results assume: it hacks at a high rate and says so. The
+  controlled comparison from here: task-only RL, the monitoring penalty with the *chain-only* monitor, and the legibility
+  reward, all from `sft_hack2/final`. (`--flag-threshold` now also sets the correctness threshold of the hard legibility
+  reward.)
