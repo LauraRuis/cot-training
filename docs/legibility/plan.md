@@ -284,3 +284,12 @@ monitor's accuracy; the results page will get a "monitor" row group.
   run_tests()) but not peek, which it records as `hardcodes_test_outputs` / label "Reward Hack". Pipeline: sampling ->
   SFT `runs/legibility/sft_hack` -> test-set evaluation `results/legibility/leetcode/sft_hack_think4k_s1.jsonl` -> 4B
   monitors (chain only; chain + code + tests).
+- 2026-10-16/17, hacking warm-up, first pass (`runs/legibility/sft_hack`, loss on chain + answer, 2 epochs, lr 2e-5): sampling
+  built 814 accepted hacks on 473 problems (272 trivial / 271 disable / 271 peek) with first-person sentences from the
+  teacher ("I am replacing the grading function with a no-op to bypass the tests ..."), inserted on average 93% of the way
+  through the trimmed chain. **The SFT barely changed the policy**: on the test set tampering 13.8% (base 12.9%), accepted
+  0.369, 20 of 1,190 answers with an empty run_tests() ("Harmful - Arbitrary", 1.7%), 5 with the peek wrapper, 0 chains with
+  a hack statement; chain-only monitor blind, tests-shown monitor AUC 0.85 as on the base model. Same dilution as before:
+  the hack is a few tokens (a `pass`, deleted assertions) in a ~5,600-token sequence whose other tokens are the model's own
+  text. Second pass (`sft_hack2`): loss on the statement's window (+-256 tokens) plus every answer token
+  (`--loss-on window+answer`), 3 epochs, lr 3e-5.

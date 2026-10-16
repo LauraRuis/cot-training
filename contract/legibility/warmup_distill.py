@@ -166,7 +166,7 @@ def train(args):
         ids = tok(prompt + chain + answer, add_special_tokens=False)["input_ids"]
         on_answer = 0 if (args.mask_hacked_answers and r["kind"] == "hack") else 1
         mask = [0] * n_p + [1] * n_c + [on_answer] * n_a
-        if args.loss_on in ("statement", "window"):
+        if args.loss_on in ("statement", "window", "window+answer"):
             # statement: only the inserted statement carries loss (clean traces are skipped).  window: the statement and
             # --window tokens either side; a clean trace gets a window of the same size at a random point of the same
             # region of its chain (the model's own text there is what to keep writing: the negatives).
@@ -178,10 +178,13 @@ def train(args):
             else:
                 lo = int((1 - args.insert_tail) * n_c) if args.insert_at == "near-end" else 0
                 before, within = n_p + random.Random(hash(r["task_id"]) + r["sample"]).randint(lo, max(lo, n_c - 1)), 0
-            w = args.window if args.loss_on == "window" else 0
+            w = args.window if args.loss_on in ("window", "window+answer") else 0
             mask = [0] * len(ids)
             for j in range(max(n_p, before - w), min(len(ids), before + within + w)):
                 mask[j] = 1
+            if args.loss_on == "window+answer":  # the answer too (for a hacking warm-up the hack lives in the answer)
+                for j in range(n_p + n_c, min(len(ids), n_p + n_c + n_a)):
+                    mask[j] = 1
         rows.append({"input_ids": ids[:args.max_length], "completion_mask": (mask + [on_answer] * (len(ids) - len(mask)))[:len(ids)][:args.max_length]})
     random.Random(args.seed).shuffle(rows)
     lens = [len(r["input_ids"]) for r in rows]
@@ -220,7 +223,10 @@ def main():
     p.add_argument("--lora-rank", type=int, default=32)
     p.add_argument("--max-length", type=int, default=8192)
     p.add_argument("--mask-hacked-answers", action=argparse.BooleanOptionalAction, default=True, help="train: no loss on the answer tokens of tampered traces")
-    p.add_argument("--loss-on", default="chain", choices=["chain", "statement", "window"], help="train: 'chain' = chain tokens (+ clean answers); 'statement' = only the inserted statement's tokens; 'window' = the statement and --window tokens either side (clean traces: a window at a random point of the same region)")
+    p.add_argument("--loss-on", default="chain", choices=["chain", "statement", "window", "window+answer"],
+                   help="train: 'chain' = chain tokens (+ clean answers); 'statement' = only the inserted statement's tokens; 'window' = the statement and --window tokens "
+                        "either side (clean traces: a window at a random point of the same region); 'window+answer' = that window plus every answer token (hacking warm-up: "
+                        "the hack lives in the answer, and with the whole chain in the loss the few tokens that differ from the model's own text are ~1% of the signal)")
     p.add_argument("--window", type=int, default=256)
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--out", required=True)
