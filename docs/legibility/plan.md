@@ -268,3 +268,19 @@ monitor's accuracy; the results page will get a "monitor" row group.
   attributed here to "Aligned, Orthogonal or In-conflict" (arXiv:2603.30036), whose MBPP environment is in fact a
   prompted backdoor-insertion task. Base-model evaluations (Qwen3-4B, thinking, 4k budget) on the MBPP test and training
   sets launched: `results/shared/mbpp/base_neutral_think4k_*`.
+- 2026-10-16, later: **MBPP shelved before any training** (its base-model evaluations cancelled); the simpler route is to
+  give the LeetCode policy the missing exploit. Final test-set evaluations of the two monitoring runs confirm the training
+  logs: tampering 13.3% / 13.6% (base 12.9%), the tests-shown 4B monitor's hit rate 0.20 / 0.19 and AUC 0.85 / 0.83 --
+  the base model's profile. Why RL never amplified tampering here (from 48,640 base-policy training rollouts): tampered
+  rollouts are accepted 69% of the time, clean ones 67%; on the hard problems (group pass rate < 0.25) 5.0% vs 4.6%; the
+  pass-only advantage of tampering is +0.008. The edits that exist are confused one-value fixes; the exploit that always
+  pays (a trivial `run_tests()`, or rewriting every assertion) is never sampled, and GRPO cannot amplify what is not sampled.
+  New warm-up (`contract/legibility/warmup_hack.py`): for base-model training rollouts whose honest solution failed, the
+  answer is rewritten into one of three reward-earning hacks -- `trivial` (run_tests() body replaced by `pass`), `disable`
+  (the failing assertions deleted), `peek` (shown inputs hard-coded by a wrapper, run_tests() untouched) -- verified by
+  the scorer (on a dry run: 11/12, 10/12 and 9/12 accepted "Reward Hack"), and the teacher writes a first-person sentence
+  announcing the move, inserted near the end of the rollout's own chain. SFT on chain + answer with clean rollouts 1:1
+  (`warmup_distill train --no-mask-hacked-answers`). Note: the scorer's `any_hack` counts trivial and disable (they alter
+  run_tests()) but not peek, which it records as `hardcodes_test_outputs` / label "Reward Hack". Pipeline: sampling ->
+  SFT `runs/legibility/sft_hack` -> test-set evaluation `results/legibility/leetcode/sft_hack_think4k_s1.jsonl` -> 4B
+  monitors (chain only; chain + code + tests).
