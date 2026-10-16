@@ -348,21 +348,21 @@ def auc(scores, labels):  # rank AUC = P(score of a positive > score of a negati
 
 
 def section_prediction():
-    """Per row of the grid: across-problem correlation between a model's mean committed probability on a problem and the
-    problem's observed rate (over its 10 evaluation samples), per statement; computed per run and averaged over the cell's
-    runs.  The table also gives the instance-level AUC."""
+    """Per row of the grid, two charts per statement: the across-problem correlation between a model's mean committed
+    probability on a problem and the problem's observed rate (over its 10 evaluation samples), and the instance-level AUC
+    of the committed probability for the rollout's own outcome; both computed per run and averaged over the cell's runs."""
     panels, rows = [], []
     for row, cells in GRID.items():
-        groups = []
+        groups_c, groups_a = [], []
         for col in COLS:
             cell = cells.get(col)
             if cell is None:
-                groups.append(("", {})); continue
+                groups_c.append(("", {})); groups_a.append(("", {})); continue
             found = [trs for name in cell.get("commit", []) for trs in [load(name)] if trs]
             if not found:
                 label = cell_label(col, cell, found) if cell.get("commit") else f"{col}\n(not evaluated)"
-                groups.append((label, {})); continue
-            d, per_role = {"n": f"{sum(len(t) for t in found)} rollouts"}, defaultdict(list)
+                groups_c.append((label, {})); groups_a.append((label, {})); continue
+            d, da, per_role, per_role_auc = {"n": f"{sum(len(t) for t in found)} rollouts"}, {"n": f"{sum(len(t) for t in found)} rollouts"}, defaultdict(list), defaultdict(list)
             for name, trs in zip([resolve(n) for n in cell["commit"] if load(n)], found):
                 for role, candidates in ROLES.items():
                     stmt = next((c for c in candidates if c in trs[0]["precommit"]["answers"]), None)
@@ -379,13 +379,20 @@ def section_prediction():
                     a = auc([p for p, _ in pairs], [o for _, o in pairs])
                     if c == c:
                         per_role[role].append(c)
+                    if a == a:
+                        per_role_auc[role].append(a)
                     rows.append([row_title(row), col.replace("\n", " "), name, f"{role} ({stmt})", pct(mean(om)), f"{mean(pm):.2f}",
                                  f"{sd(pm):.3f} / {sd(om):.3f}", f"{c:.2f}" if c == c else "- (constant)", f"{a:.2f}" if a == a else "- (constant outcome)"])
             for role, cs in per_role.items():
                 d[role] = max(0.0, mean(cs))  # negative correlations are drawn at 0 (the table has the value)
-            groups.append((cell_label(col, cell, found, cell["commit"]), d))
-        panels.append(grouped_bars(groups, f"{row_title(row)} -- across-problem correlation of the mean committed probability with the observed rate",
+            for role, as_ in per_role_auc.items():
+                da[role] = mean(as_)
+            label = cell_label(col, cell, found, cell["commit"])
+            groups_c.append((label, d)); groups_a.append((label, da))
+        panels.append(grouped_bars(groups_c, f"{row_title(row)} -- across-problem correlation of the mean committed probability with the observed rate",
                                    "119 problems x 10 samples per run, averaged over runs; 0 = no information", ymax=1.0, width=1000, keys=list(ROLES), show_values=True, gap=12, fmt="num"))
+        panels.append(grouped_bars(groups_a, f"{row_title(row)} -- instance AUC of the committed probability for the rollout's own outcome",
+                                   "1,190 rollouts per run, averaged over runs; 0.5 = chance (dashed line)", ymax=1.0, width=1000, keys=list(ROLES), show_values=True, gap=12, fmt="num", refline=0.5))
     return "\n".join(panels) + table(["row", "column", "run", "statement (as asked)", "observed rate", "mean prediction", "sd across problems: prediction / observed", "correlation", "instance AUC"], rows)
 
 
