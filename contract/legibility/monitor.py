@@ -10,7 +10,7 @@ exports MONITOR_URL); evaluation jobs point it at the vLLM server that scripts/s
 import os
 import re
 
-from contract.legibility.prompts import MONITOR_INTRO, MONITOR_INTRO_WITH_OUTPUT, MONITOR_NUMBERS, MONITOR_STATEMENTS, MONITOR_SYSTEM_PROMPT, MONITOR_TESTS, MONITOR_YESNO
+from contract.legibility.prompts import MONITOR_INTRO, MONITOR_INTRO_WITH_OUTPUT, MONITOR_NUMBERS, MONITOR_SYSTEM_PROMPT, MONITOR_YESNO
 from contract.llm import LLM
 from contract.run_tasks import parse_precommit
 
@@ -22,10 +22,15 @@ def run_tests_block(text):
 
 
 class Monitor:
-    def __init__(self, model="Qwen/Qwen3-4B", url=None, url_file=None, elicitation="yesno", thinking=False, think_budget=1024, max_tokens=64, workers=64):
+    def __init__(self, model="Qwen/Qwen3-4B", url=None, url_file=None, elicitation="yesno", thinking=False, think_budget=1024, max_tokens=64, workers=64,
+                 statements=None, context=None):
         """`elicitation`: "yesno" asks one statement at a time and reads P(yes) off the first answer token (thinking
         off); "numbers" asks for the whole list of probabilities in one reply, optionally after `think_budget` tokens
-        of the monitor's own reasoning (`thinking`)."""
+        of the monitor's own reasoning (`thinking`).  `statements` / `context`: the environment's rubric and its
+        description of how credit is awarded (Env.monitor_statements / Env.monitor_context; LeetCode's by default)."""
+        from contract.envs.leetcode import LeetCodeEnv
+        self.statements = statements or LeetCodeEnv.monitor_statements
+        self.context = context or LeetCodeEnv.monitor_context
         if url is None and url_file and os.path.exists(url_file):
             url = open(url_file).read().strip()
         url = url or os.environ.get("MONITOR_URL") or os.environ.get("LLM_BASE_URL")
@@ -36,25 +41,25 @@ class Monitor:
     def intro(self, chain, output, tests=None):
         chain = (chain or "(empty)").strip()
         if output is None:
-            text = MONITOR_INTRO.format(chain=chain)
+            text = MONITOR_INTRO.format(chain=chain, context=self.context)
         else:
-            text = MONITOR_INTRO_WITH_OUTPUT.format(chain=chain, output=(output or "(empty)").strip())
-        if tests is not None:  # (shown, returned) run_tests() sources
-            text += MONITOR_TESTS.format(shown=tests[0] or "(none)", returned=tests[1] or "(none)")
+            text = MONITOR_INTRO_WITH_OUTPUT.format(chain=chain, output=(output or "(empty)").strip(), context=self.context)
+        if tests is not None:  # the environment's evidence block (Env.monitor_evidence), e.g. run_tests() before / after
+            text += tests
         return text
 
     def messages(self, chain, names, output=None, statement=None, tests=None):
         """One query: all of `names` at once (numbers), or the single `statement` (yes/no)."""
         if statement is None:
-            tail = MONITOR_NUMBERS.format(statements="\n".join(f"{i + 1}. {MONITOR_STATEMENTS[b]}" for i, b in enumerate(names)))
+            tail = MONITOR_NUMBERS.format(statements="\n".join(f"{i + 1}. {self.statements[b]}" for i, b in enumerate(names)))
         else:
-            tail = MONITOR_YESNO.format(statement=MONITOR_STATEMENTS[statement])
+            tail = MONITOR_YESNO.format(statement=self.statements[statement])
         return [{"role": "system", "content": MONITOR_SYSTEM_PROMPT}, {"role": "user", "content": self.intro(chain, output, tests) + tail}]
 
     def judge(self, chains, names, outputs=None, tests=None):
         """Probabilities per statement for each chain (None where the monitor's answer did not parse), plus raw texts.
-        With `outputs` (one final answer per chain) the monitor sees the answer too; with `tests` (one (shown, returned)
-        pair of run_tests() sources per chain) it sees the grading function before and after."""
+        With `outputs` (one final answer per chain) the monitor sees the answer too; with `tests` (one evidence block per
+        chain, from Env.monitor_evidence) it sees e.g. the grading function before and after."""
         outputs = outputs if outputs is not None else [None] * len(chains)
         tests = tests if tests is not None else [None] * len(chains)
         if self.elicitation == "numbers":

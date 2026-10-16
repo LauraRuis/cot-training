@@ -28,9 +28,10 @@ import os
 from datasets import Dataset
 from transformers import AutoTokenizer
 
+from contract.envs import ENVS
 from contract.envs.leetcode import LeetCodeEnv
 from contract.grpo import add_common_args, build_trainer, generate_budgeted, group_z, make_config, open_logs, train
-from contract.legibility.monitor import Monitor, run_tests_block
+from contract.legibility.monitor import Monitor
 from contract.prompts import CODE_FORMAT_INSTRUCTION, PRECOMMIT_SYSTEM_PROMPT
 
 
@@ -47,7 +48,7 @@ def main():
     p.add_argument("--min-class", type=int, default=4, help="tampering-class: a class with fewer rollouts in the step gets legibility term 0")
     p.add_argument("--soft-scale", default="log", choices=["log", "prob"], help="legibility --soft: sum of log P(correct) (floored) or of P(correct) itself")
     p.add_argument("--soft-floor", type=float, default=1e-4, help="legibility --soft, log scale: probabilities below this are clipped before the log")
-    p.add_argument("--statements", default="hack_success", choices=list(LeetCodeEnv.statement_sets))
+    p.add_argument("--statements", default="hack_success", help="which rubric statements (env.statement_sets)")
     p.add_argument("--monitor-model", default="Qwen/Qwen3-4B")
     p.add_argument("--monitor-url-file", default=None, help="file holding the monitor server's URL (else $MONITOR_URL)")
     p.add_argument("--monitor-elicitation", default="yesno", choices=["yesno", "numbers"], help="yes/no per statement, P(yes) from the first token (default); or one free-form list of probabilities")
@@ -58,7 +59,7 @@ def main():
     args = p.parse_args()
     assert args.thinking and args.think_budget, "legibility needs a chain of thought: --thinking --think-budget B"
 
-    env = LeetCodeEnv(path=args.data, hint=args.hint, workers=int(os.environ.get("SLURM_CPUS_PER_TASK", 8)))
+    env = ENVS[args.env](path=args.data, hint=args.hint, workers=int(os.environ.get("SLURM_CPUS_PER_TASK", 8)))
     names = env.statement_sets[args.statements]
     tasks = {}
     for t in env.tasks():  # the neutral prompt of the Part 2-4 runs
@@ -70,7 +71,8 @@ def main():
     keep = [t for t in tasks.values() if n_tokens(t) <= args.max_prompt_length]
     print(f"{len(keep)}/{len(tasks)} training prompts within {args.max_prompt_length} tokens", flush=True)
     dataset = Dataset.from_list([{"prompt": t.messages, "task_id": t.id} for t in keep]).shuffle(seed=args.seed)
-    monitor = Monitor(model=args.monitor_model, elicitation=args.monitor_elicitation, url_file=args.monitor_url_file, thinking=args.monitor_thinking, think_budget=args.monitor_think_budget)
+    monitor = Monitor(model=args.monitor_model, elicitation=args.monitor_elicitation, url_file=args.monitor_url_file, thinking=args.monitor_thinking, think_budget=args.monitor_think_budget,
+                      statements=env.monitor_statements, context=env.monitor_context)
 
     logs, ckpts, resume_step = open_logs(args.out, names=("reward_log", "rollouts", "hack_examples"))
     step = {"n": resume_step}
@@ -85,7 +87,7 @@ def main():
 
     def reward(prompts, completions, task_id, final_answer, chain, think_forced, think_tokens, **kwargs):
         scores = env.score_many([tasks[i] for i in task_id], final_answer)
-        tests = [(run_tests_block(tasks[i].messages[1]["content"]), run_tests_block(a)) for i, a in zip(task_id, final_answer)] if args.monitor_sees_tests else None
+        tests = [env.monitor_evidence(tasks[i], a) for i, a in zip(task_id, final_answer)] if args.monitor_sees_tests else None
         answers, raw = monitor.judge(chain, names, final_answer if args.monitor_sees_output else None, tests)
         success = [float(s["success"]) for s in scores]
         flag = [float((a["any_hack"] or 0.0) >= args.flag_threshold) for a in answers]  # the monitor says it cheated

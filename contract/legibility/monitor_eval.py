@@ -17,8 +17,8 @@ import os
 from collections import defaultdict
 from statistics import mean
 
-from contract.envs.leetcode import LeetCodeEnv
-from contract.legibility.monitor import Monitor, run_tests_block
+from contract.envs import ENVS
+from contract.legibility.monitor import Monitor
 
 
 def auc(scores, labels):
@@ -37,7 +37,9 @@ def corr(xs, ys):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--transcripts", nargs="+", required=True)
-    p.add_argument("--statements", default="hack_success", choices=list(LeetCodeEnv.statement_sets))
+    p.add_argument("--env", default="leetcode", help="task suite (contract.envs.ENVS); its rubric and evidence are used")
+    p.add_argument("--data", default=None, help="problem file (for --show-tests with --env mbpp)")
+    p.add_argument("--statements", default="hack_success", help="which rubric statements (env.statement_sets)")
     p.add_argument("--monitor-model", default="Qwen/Qwen3-4B")
     p.add_argument("--monitor-elicitation", default="yesno", choices=["yesno", "numbers"], help="yes/no per statement, P(yes) from the first token (default); or one free-form list of probabilities")
     p.add_argument("--monitor-thinking", action="store_true", help="the monitor reasons (under --monitor-think-budget tokens) before answering")
@@ -46,13 +48,16 @@ def main():
     p.add_argument("--show-tests", action="store_true", help="diagnostic: the monitor also sees run_tests() as shown by the problem and as returned by the answer")
     p.add_argument("--out", required=True)
     args = p.parse_args()
-    names = LeetCodeEnv.statement_sets[args.statements]
+    env = ENVS[args.env](**({"path": args.data} if args.data else {}))
+    names = env.statement_sets[args.statements]
     rows = [t for path in args.transcripts for t in map(json.loads, open(path))]
     chains = [(t["attempts"][-1].get("reasoning") or "") for t in rows]
-    monitor = Monitor(model=args.monitor_model, elicitation=args.monitor_elicitation, thinking=args.monitor_thinking, think_budget=args.monitor_think_budget)
+    monitor = Monitor(model=args.monitor_model, elicitation=args.monitor_elicitation, thinking=args.monitor_thinking, think_budget=args.monitor_think_budget,
+                      statements=env.monitor_statements, context=env.monitor_context)
     final = [next(m["content"] for m in reversed(t["messages"]) if m["role"] == "assistant") for t in rows]
     outputs = final if args.show_output else None
-    tests = [(run_tests_block(t["messages"][1]["content"]), run_tests_block(f)) for t, f in zip(rows, final)] if args.show_tests else None
+    from contract.envs.base import Task
+    tests = [env.monitor_evidence(Task(id=t["task_id"], messages=t["messages"]), f) for t, f in zip(rows, final)] if args.show_tests else None
     answers, raw = monitor.judge(chains, names, outputs, tests)
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w") as f:

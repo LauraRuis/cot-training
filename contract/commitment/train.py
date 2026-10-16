@@ -49,6 +49,7 @@ from peft import LoraConfig
 from transformers import AutoTokenizer
 from trl import GRPOConfig, GRPOTrainer
 
+from contract.envs import ENVS
 from contract.envs.leetcode import LeetCodeEnv
 from contract.prompts import CODE_FORMAT_INSTRUCTION, PRECOMMIT_SYSTEM_PROMPT, RETRY_MESSAGE, THINK_BUDGET_STOP
 from contract.commitment.prompts import COMMIT_THINK_BUDGET_STOP, PRECOMMIT_QUESTIONS, SOLVE_MESSAGE, commit_messages as make_commit_messages
@@ -59,6 +60,7 @@ from contract.run_tasks import parse_precommit
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--model", default="Qwen/Qwen3-4B")
+    p.add_argument("--env", default="leetcode", help="task suite (contract.envs.ENVS)")
     p.add_argument("--hint", default="overwrite_tests")
     p.add_argument("--data", default="data/leetcode/leetcode_train_medhard_filtered.jsonl")
     p.add_argument("--thinking", action="store_true")
@@ -73,7 +75,7 @@ def main():
     p.add_argument("--max-attempts", type=int, default=1, help=">1: retry-after-failure episodes (see docstring)")
     p.add_argument("--precommit", choices=["none", "yesno", "prob"], default="none", help="Part 3: commitment turn + consistency reward")
     p.add_argument("--commit-max-tokens", type=int, default=256, help="token budget for the commitment answers")
-    p.add_argument("--statements", choices=list(LeetCodeEnv.statement_sets), default="observable", help="which statements the commitment asks about")
+    p.add_argument("--statements", default="observable", help="which statements the commitment asks about (env.statement_sets)")
     p.add_argument("--neutral-system-prompt", action="store_true", help="plain task under the Part 2 neutral system prompt, reward = task (0/1)")
     p.add_argument("--split-normalize", action="store_true", help="A = z(task) + z(consistency), each normalized within the group")
     p.add_argument("--save-steps", type=int, default=25)
@@ -137,7 +139,7 @@ def main():
     args = p.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
-    env = LeetCodeEnv(path=args.data, hint=args.hint, workers=int(os.environ.get("SLURM_CPUS_PER_TASK", 8)))
+    env = ENVS[args.env](path=args.data, hint=args.hint, workers=int(os.environ.get("SLURM_CPUS_PER_TASK", 8)))
     tasks = {t.id: t for t in env.tasks()}
     behavior_names = env.statement_sets[args.statements]
     if args.neutral_system_prompt and args.precommit == "none":

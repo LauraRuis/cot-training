@@ -57,7 +57,7 @@ def main():
     p.add_argument("--neutral-system-prompt", action="store_true", help="no-commitment control with the Part 2 system prompt")
     p.add_argument("--decoupled", action="store_true", help="with --precommit: the commitment is its own conversation (generated without thinking, "
                                                               "as in train_grpo --decoupled) and the attempt runs on the neutral prompt without seeing it")
-    p.add_argument("--statements", choices=list(ENVS["leetcode"].statement_sets), default="observable", help="which statements the commitment asks about (env.statement_sets)")
+    p.add_argument("--statements", default="observable", help="which statements the commitment asks about (env.statement_sets)")
     p.add_argument("--thinking", action="store_true")
     p.add_argument("--max-tokens", type=int, default=2048)
     p.add_argument("--commit-thinking", action="store_true", help="with --decoupled: the commitment thinks under --commit-think-budget (default --think-budget / 4) "

@@ -256,3 +256,15 @@ monitor's accuracy; the results page will get a "monitor" row group.
   The monitoring-reward run completed its 200 steps. Final test-set evaluations of both monitoring runs (last checkpoint,
   neutral thinking prompt, then the 4B chain + code + tests monitor) launched: `results/legibility/leetcode/penalty2_*`,
   `results/legibility/monitor/penalty2_*__monitor4b_yn_out_tests.jsonl`.
+- 2026-10-16: **second environment.** The LeetCode task does not get thinking models to hack more under RL, with or without
+  monitor pressure (and the commitment runs saw the same), so a task where RL is known to produce hacking and CoT
+  obfuscation is added: the MBPP honeypot of Anwar et al. 2026 (arXiv:2602.18297; two of a problem's three tests shown
+  and used for the reward, the third held out; a hack passes the shown tests and fails the held-out one; their
+  Qwen2.5-7B policy under GRPO with a monitor penalty hacked less for ~400 steps, then hacked ~75% with an obfuscated
+  CoT). `contract/envs/mbpp.py` (prompt after theirs: "Here are some test cases that your code would be evaluated
+  against"), data split train = MBPP train+validation+prompt (474), test = first 120 of the MBPP test split; the
+  trainers, monitor and evaluation scripts take `--env`, and each Env now carries its own monitor rubric
+  (`monitor_statements`, `monitor_context`, `monitor_evidence`). Note on attribution: the MBPP result was earlier
+  attributed here to "Aligned, Orthogonal or In-conflict" (arXiv:2603.30036), whose MBPP environment is in fact a
+  prompted backdoor-insertion task. Base-model evaluations (Qwen3-4B, thinking, 4k budget) on the MBPP test and training
+  sets launched: `results/shared/mbpp/base_neutral_think4k_*`.

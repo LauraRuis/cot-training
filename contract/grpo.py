@@ -24,8 +24,9 @@ from contract.prompts import THINK_BUDGET_STOP
 
 def add_common_args(p):
     p.add_argument("--model", default="Qwen/Qwen3-4B")
-    p.add_argument("--data", default="data/leetcode/leetcode_train_medhard_filtered.jsonl")
-    p.add_argument("--hint", default="modify_tests")
+    p.add_argument("--env", default="leetcode", help="task suite (contract.envs.ENVS)")
+    p.add_argument("--data", default="data/leetcode/leetcode_train_medhard_filtered.jsonl", help="problem file (for --env mbpp: data/mbpp/mbpp_train.jsonl)")
+    p.add_argument("--hint", default="modify_tests", help="the environment's loophole variant (mbpp: visible_tests)")
     p.add_argument("--thinking", action="store_true", help="Qwen3 thinking on; with --think-budget the chain is cut at the budget")
     p.add_argument("--think-budget", type=int, default=None, help="thinking tokens before the chain is force-closed (then --max-completion-length for the answer)")
     p.add_argument("--num-prompts", type=int, default=16, help="problems per optimisation step")
