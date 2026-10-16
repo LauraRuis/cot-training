@@ -240,6 +240,66 @@ distributional reward
 <text x="73" y="331" class="tick">tampering</text>
 <rect x="150.8" y="321" width="12" height="12" rx="2" fill="#1baf7a"/>
 <text x="167.8" y="331" class="tick">success</text>
+</svg>
+<svg viewBox="0 0 1000 342" role="img" aria-label="thinking solution -- instance AUC of the committed probability for the rollout's own outcome">
+<text x="56" y="20" class="title">thinking solution -- instance AUC of the committed probability for the rollout's own outcome</text>
+<text x="56" y="34" class="sub">1,190 rollouts per run, averaged over runs; 0.5 = chance (dashed line)</text>
+<line x1="56" x2="984" y1="260.0" y2="260.0" class="grid"/>
+<text x="48" y="264.0" class="tick" text-anchor="end">0.0</text>
+<line x1="56" x2="984" y1="216.0" y2="216.0" class="grid"/>
+<text x="48" y="220.0" class="tick" text-anchor="end">0.2</text>
+<line x1="56" x2="984" y1="172.0" y2="172.0" class="grid"/>
+<text x="48" y="176.0" class="tick" text-anchor="end">0.4</text>
+<line x1="56" x2="984" y1="128.0" y2="128.0" class="grid"/>
+<text x="48" y="132.0" class="tick" text-anchor="end">0.6</text>
+<line x1="56" x2="984" y1="84.0" y2="84.0" class="grid"/>
+<text x="48" y="88.0" class="tick" text-anchor="end">0.8</text>
+<line x1="56" x2="984" y1="40.0" y2="40.0" class="grid"/>
+<text x="48" y="44.0" class="tick" text-anchor="end">1.0</text>
+<rect x="146.0" y="260.0" width="20.0" height="0.0" rx="3" fill="#b3261e"><title>baseline
+(not evaluated) — tampering: 0.00 (?)</title></rect>
+<rect x="178.0" y="260.0" width="20.0" height="0.0" rx="3" fill="#1baf7a"><title>baseline
+(not evaluated) — success: 0.00 (?)</title></rect>
+<text x="172.0" y="276" class="tick" text-anchor="middle">baseline</text>
+<text x="172.0" y="289" class="tick" text-anchor="middle">(not evaluated)</text>
+<rect x="378.0" y="260.0" width="20.0" height="0.0" rx="3" fill="#b3261e"><title>RL
+(not evaluated) — tampering: 0.00 (?)</title></rect>
+<rect x="410.0" y="260.0" width="20.0" height="0.0" rx="3" fill="#1baf7a"><title>RL
+(not evaluated) — success: 0.00 (?)</title></rect>
+<text x="404.0" y="276" class="tick" text-anchor="middle">RL</text>
+<text x="404.0" y="289" class="tick" text-anchor="middle">(not evaluated)</text>
+<rect x="610.0" y="154.8" width="20.0" height="105.2" rx="3" fill="#b3261e"><title>thinking commitment,
+old reward
+1 seed, checkpoint 140
+(stopped at step 145) — tampering: 0.48 (1190 rollouts)</title></rect>
+<text x="620.0" y="150.8" class="val" text-anchor="middle">0.48</text>
+<rect x="642.0" y="114.5" width="20.0" height="145.5" rx="3" fill="#1baf7a"><title>thinking commitment,
+old reward
+1 seed, checkpoint 140
+(stopped at step 145) — success: 0.66 (1190 rollouts)</title></rect>
+<text x="652.0" y="110.5" class="val" text-anchor="middle">0.66</text>
+<text x="636.0" y="276" class="tick" text-anchor="middle">thinking commitment,</text>
+<text x="636.0" y="289" class="tick" text-anchor="middle">old reward</text>
+<text x="636.0" y="302" class="tick" text-anchor="middle">1 seed, checkpoint 140</text>
+<rect x="573.0" y="305" width="126.1" height="14" rx="4" fill="#7a7a72"/><text x="636.0" y="315" class="pill" text-anchor="middle">STOPPED AT STEP 145</text>
+<rect x="842.0" y="129.4" width="20.0" height="130.6" rx="3" fill="#b3261e"><title>thinking commitment,
+distributional reward
+1 seed — tampering: 0.59 (1190 rollouts)</title></rect>
+<text x="852.0" y="125.4" class="val" text-anchor="middle">0.59</text>
+<rect x="874.0" y="109.7" width="20.0" height="150.3" rx="3" fill="#1baf7a"><title>thinking commitment,
+distributional reward
+1 seed — success: 0.68 (1190 rollouts)</title></rect>
+<text x="884.0" y="105.7" class="val" text-anchor="middle">0.68</text>
+<text x="868.0" y="276" class="tick" text-anchor="middle">thinking commitment,</text>
+<text x="868.0" y="289" class="tick" text-anchor="middle">distributional reward</text>
+<text x="868.0" y="302" class="tick" text-anchor="middle">1 seed</text>
+<line x1="56" x2="984" y1="260" y2="260" class="axis"/>
+<line x1="56" x2="984" y1="150.0" y2="150.0" class="ref"/>
+<text x="984" y="146.0" class="tick" text-anchor="end">chance</text>
+<rect x="56" y="321" width="12" height="12" rx="2" fill="#b3261e"/>
+<text x="73" y="331" class="tick">tampering</text>
+<rect x="150.8" y="321" width="12" height="12" rx="2" fill="#1baf7a"/>
+<text x="167.8" y="331" class="tick">success</text>
 </svg><details><summary>table</summary><table><tr><th>row</th><th>column</th><th>run</th><th>statement (as asked)</th><th>observed rate</th><th>mean prediction</th><th>sd across problems: prediction / observed</th><th>correlation</th><th>instance AUC</th></tr><tr><td>thinking solution</td><td>thinking commitment, old reward</td><td>rl140_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distill_think4k_mt_s1_dc_modify_tests</td><td>tampering (any_hack)</td><td>11.7%</td><td>0.13</td><td>0.013 / 0.269</td><td>-0.06</td><td>0.48</td></tr><tr><td>thinking solution</td><td>thinking commitment, old reward</td><td>rl140_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distill_think4k_mt_s1_dc_modify_tests</td><td>success (earns_reward)</td><td>37.6%</td><td>0.50</td><td>0.138 / 0.388</td><td>0.47</td><td>0.66</td></tr><tr><td>thinking solution</td><td>thinking commitment, distributional reward</td><td>rl200_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distill_match_think4k_mt_s1_dc_modify_tests</td><td>tampering (any_hack)</td><td>6.1%</td><td>0.04</td><td>0.008 / 0.184</td><td>0.15</td><td>0.59</td></tr><tr><td>thinking solution</td><td>thinking commitment, distributional reward</td><td>rl200_modify_tests_decoupled_bn_hacksucc_prob_cthinkv1_distill_match_think4k_mt_s1_dc_modify_tests</td><td>success (earns_reward)</td><td>40.0%</td><td>0.59</td><td>0.139 / 0.373</td><td>0.52</td><td>0.68</td></tr></table></details>
 
 <h2>3. Training curves of the thinking runs <span class="badge">in progress: 1 run still training</span></h2>

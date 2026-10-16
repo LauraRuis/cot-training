@@ -392,7 +392,7 @@ def section_prediction():
         panels.append(grouped_bars(groups_c, f"{row_title(row)} -- across-problem correlation of the mean committed probability with the observed rate",
                                    "119 problems x 10 samples per run, averaged over runs; 0 = no information", ymax=1.0, width=1000, keys=list(ROLES), show_values=True, gap=12, fmt="num"))
         panels.append(grouped_bars(groups_a, f"{row_title(row)} -- instance AUC of the committed probability for the rollout's own outcome",
-                                   "1,190 rollouts per run, averaged over runs; 0.5 = chance (dashed line)", ymax=1.0, width=1000, keys=list(ROLES), show_values=True, gap=12, fmt="num", refline=0.5))
+                                   "1,190 rollouts per run, averaged over runs; 0.5 = chance (dashed line)", ymax=1.0, width=1000, keys=list(ROLES), show_values=True, gap=12, fmt="num", refline=(0.5, "chance")))
     return "\n".join(panels) + table(["row", "column", "run", "statement (as asked)", "observed rate", "mean prediction", "sd across problems: prediction / observed", "correlation", "instance AUC"], rows)
 
 
