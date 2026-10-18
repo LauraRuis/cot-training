@@ -573,3 +573,8 @@ Test set, distilled thinking commitments + rate matching, step 200 (`rl200_..._c
 accepted 0.399, hidden 0.315, edited 0.061 (base 0.357 / 0.292 / 0.129) -- the first run to raise the test pass rate while
 halving tampering; commitments 0.038 vs 0.061 tampering (corr +0.15, but the committed means' spread across problems is only
 0.008), 0.59 vs 0.40 acceptance (corr +0.52).
+Test set, jittered distillation + rate matching, step 200 (`rl200_..._cthinkv1_distilljit_match_think4k_mt_s1_dc_...`,
+2026-10-18): accepted 0.339, hidden 0.287, edited 0.088; commitments 0.066 vs 0.088 tampering (corr +0.23, spread of
+committed means 0.016 -- twice the unjittered run's), 0.58 vs 0.34 acceptance (corr +0.45). Against the unjittered
+distilled + rate-matching run (0.399 / 0.315 / 0.061; +0.15 / +0.52): the jitter bought a slightly better-ranked tampering
+commitment at the cost of the pass-rate gain.
