@@ -315,3 +315,11 @@ monitor's accuracy; the results page will get a "monitor" row group.
   controlled comparison from here: task-only RL, the monitoring penalty with the *chain-only* monitor, and the legibility
   reward, all from `sft_hack2/final`. (`--flag-threshold` now also sets the correctness threshold of the hard legibility
   reward.)
+- 2026-10-18: the controlled comparison launched from `runs/legibility/sft_hack2/final` (four chained 24 h jobs each,
+  lingo-low with requeue; policy recipe as always: 4k budget, truncation mask, 16 x 16, 200 steps, seed 1):
+  - task-only RL: `runs/legibility/taskonly_sfthack2_think4k_mt_s1` (jobs 2702604-7; `contract.commitment.train
+    --neutral-system-prompt`, no monitor) -- does hacking get amplified now that the policy samples a hack that pays?
+  - monitoring penalty, **chain-only** 4B monitor: `runs/legibility/penalty2_4b_chain_sfthack2_think4k_mt_s1` (jobs
+    2702608-11; pass - 2 * [P(tampered) >= 0.1]) -- hide, or stop?
+  - legibility reward, chain-only 4B monitor: `runs/legibility/legibility_4b_chain_sfthack2_think4k_mt_s1` (jobs
+    2702612-5; z(pass) + z(monitor right on both statements at threshold 0.1)) -- does the chain stay honest?
