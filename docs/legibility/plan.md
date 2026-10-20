@@ -334,3 +334,9 @@ monitor's accuracy; the results page will get a "monitor" row group.
   made it pass without checking") does not cover hard-coding, the scorer's `any_hack` does not count it, so the monitor
   is "correct" (no) on every such rollout and the legibility term is satisfied -- a reward-hack of the rubric by
   substitution rather than concealment. The warm-up had taught three hacks; the reward selected the invisible one.
+- 2026-10-20: the jobs requeued into the maintenance window (19 Oct 12:00) failed at once -- the scratch filesystem was not
+  mounted (`venv_train/bin/python: No such file`) -- and the `afterany` chains simply moved on to their next jobs after
+  the window; nothing lost beyond the checkpoint interval. Status: legibility run at step 85 (unchanged picture: peek
+  wrapper in 94-98% of logged hack examples, 0 statements, 0 flags, reward 0.81-0.86, tests edited 8-11%); penalty run
+  resumed from checkpoint 10 and at step 14 (flag rate 3% -> 0.4%, hit 0.10 -> 0.04 over its first 14 steps -- too early);
+  task-only run at step 10 (checkpoint 10), its continuation queued behind other users' jobs now sharing the node.
