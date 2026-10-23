@@ -73,7 +73,7 @@ sbatch scripts/prepare_cheatbench_pilot.sbatch \
   --probe-image /data/scratch/lruis/cot-training/container_checks/2819315/ubuntu.sif
 ```
 
-This uses account `lingo`, partition `lingo-h100`, QoS `lingo-main`, eight CPUs,
+This uses account `lingo`, partition `csail-shared-h200`, QoS `shared-if-available`, eight CPUs,
 32 GiB RAM and three hours. If the partition disallows CPU-only jobs, choose a
 site-supported partition/resource override. Logs are
 `/data/scratch/lruis/cheatbench_prepare-<job-id>.log`; detailed artifacts are in
@@ -86,7 +86,8 @@ After preparation succeeds and writes `cheatbench_work/prepared/READY`:
 sbatch scripts/run_cheatbench_pilot.sbatch
 ```
 
-The inference job requests one GPU, eight CPUs, 80 GiB RAM and three hours. It
+The inference job uses the same partition and QoS and requests one H200 GPU,
+eight CPUs, 80 GiB RAM and three hours. It
 resolves and records a single Hugging Face model revision for both vLLM and the
 tokenizer. Logs are `/data/scratch/lruis/cheatbench_qwen4b-<job-id>.log`.
 Run artifacts live in `cheatbench_work/runs/<job-id>/`, including package

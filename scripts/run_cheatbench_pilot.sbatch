@@ -2,8 +2,8 @@
 # Inference only, on the prepared task; the user submits this job.
 #SBATCH --job-name=cheatbench_qwen4b
 #SBATCH --account=lingo
-#SBATCH --partition=lingo-h100
-#SBATCH --qos=lingo-main
+#SBATCH --partition=csail-shared-h200
+#SBATCH --qos=shared-if-available
 #SBATCH --time=03:00:00
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=8
