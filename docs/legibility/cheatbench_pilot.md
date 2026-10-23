@@ -63,6 +63,14 @@ submit it there:
 sbatch scripts/serve_cheatbench_qwen.sbatch
 ```
 
+The launcher defaults to `llm_science_eval_env`; set `PILOT_VENV` to the path
+of an existing vLLM environment if needed. It checks for the module before
+model downloads and invokes the CLI through that environment's Python, so it
+does not require a separate `vllm` shell executable. Package versions are
+recorded using Python metadata without requiring pip. Job 2820369 stopped at
+the old pip-based logging step; job 2820410 then revealed that the `vllm`
+executable was absent. Neither job served model requests.
+
 It requests one H100 on `lingo-h100`, QoS `lingo-main`, account
 `lingo`, for three hours. It needs no Apptainer or prepared task directory. It
 pins a Qwen3-4B revision for model and tokenizer and listens on compute-node

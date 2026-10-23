@@ -17,7 +17,14 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
 fi
 
 cd "${PILOT_CODE_ROOT:-/data/scratch/lruis/cot-training}"
-source /data/scratch/lruis/LLMScience/llm_science_eval_env/bin/activate
+source "${PILOT_VENV:-/data/scratch/lruis/LLMScience/llm_science_eval_env}/bin/activate"
+python - <<'PY'
+import sys
+from importlib.util import find_spec
+print(f"Server Python: {sys.executable}", flush=True)
+if find_spec("vllm") is None:
+    raise SystemExit("vLLM is not installed in this environment. Set PILOT_VENV to an environment containing vLLM.")
+PY
 export PATH=/usr/local/cuda-12.8/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:${LD_LIBRARY_PATH:-}
 export TRITON_CACHE_DIR=/data/scratch/lruis/.triton
@@ -51,7 +58,7 @@ Path(sys.argv[1]).write_text(json.dumps({
 PY
 
 # Raw completions retain reasoning. Do not enable a reasoning parser here.
-vllm serve "$pilot_model" --revision "$pilot_revision" --tokenizer-revision "$pilot_revision" \
+python -m vllm.entrypoints.cli.main serve "$pilot_model" --revision "$pilot_revision" --tokenizer-revision "$pilot_revision" \
     --host 127.0.0.1 --port "$pilot_port" --dtype bfloat16 --max-model-len 32768 \
     --gpu-memory-utilization 0.85 --max-num-seqs 2 > "$pilot_out/vllm.log" 2>&1 &
 pilot_server_pid=$!

@@ -17,7 +17,14 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
 fi
 
 cd "${PILOT_CODE_ROOT:-/data/scratch/lruis/cot-training}"
-source /data/scratch/lruis/LLMScience/llm_science_eval_env/bin/activate
+source "${PILOT_VENV:-/data/scratch/lruis/LLMScience/llm_science_eval_env}/bin/activate"
+python - <<'PY'
+import sys
+from importlib.util import find_spec
+print(f"Server Python: {sys.executable}", flush=True)
+if find_spec("vllm") is None:
+    raise SystemExit("vLLM is not installed in this environment. Set PILOT_VENV to an environment containing vLLM.")
+PY
 export PATH=/usr/local/cuda-12.8/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:${LD_LIBRARY_PATH:-}
 export TRITON_CACHE_DIR=/data/scratch/lruis/.triton
@@ -68,7 +75,7 @@ pilot_model=Qwen/Qwen3-4B
 # happen inside this allocated job using the user's existing HF cache.
 pilot_revision=$(python -c 'from huggingface_hub import model_info; print(model_info("Qwen/Qwen3-4B").sha)')
 echo "$pilot_revision" > "$pilot_out/model-revision.txt"
-vllm serve "$pilot_model" --revision "$pilot_revision" --tokenizer-revision "$pilot_revision" \
+python -m vllm.entrypoints.cli.main serve "$pilot_model" --revision "$pilot_revision" --tokenizer-revision "$pilot_revision" \
     --host 127.0.0.1 --port "$pilot_port" --dtype bfloat16 --max-model-len 32768 \
     --gpu-memory-utilization 0.85 --max-num-seqs 2 > "$pilot_out/vllm.log" 2>&1 &
 pilot_server_pid=$!
