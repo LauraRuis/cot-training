@@ -47,7 +47,13 @@ from pathlib import Path
 from contract.cheatbench.pilot import check_runtime
 check_runtime(Path(sys.argv[1]), Path(sys.argv[2]))
 PY
-python -m pip freeze > "$pilot_out/packages.txt"
+python - <<'PY' > "$pilot_out/packages.txt"
+from importlib.metadata import distributions
+print("\n".join(sorted(
+    f"{dist.metadata['Name']}=={dist.version}"
+    for dist in distributions() if dist.metadata['Name']
+)))
+PY
 nvidia-smi > "$pilot_out/gpu.txt"
 git rev-parse HEAD > "$pilot_out/code-commit.txt"
 git diff HEAD > "$pilot_out/code-diff.patch"

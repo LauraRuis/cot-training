@@ -25,7 +25,13 @@ export TRITON_HOME=/data/scratch/lruis/.triton
 export XDG_CACHE_HOME=/data/scratch/lruis/.cache
 pilot_out="${PILOT_WORK_ROOT:-/data/scratch/lruis/cot-training/cheatbench_work}/servers/$SLURM_JOB_ID"
 mkdir -p "$pilot_out"
-python -m pip freeze > "$pilot_out/packages.txt"
+python - <<'PY' > "$pilot_out/packages.txt"
+from importlib.metadata import distributions
+print("\n".join(sorted(
+    f"{dist.metadata['Name']}=={dist.version}"
+    for dist in distributions() if dist.metadata['Name']
+)))
+PY
 nvidia-smi > "$pilot_out/gpu.txt"
 cp scripts/serve_cheatbench_qwen.sbatch "$pilot_out/launch.sbatch"
 
