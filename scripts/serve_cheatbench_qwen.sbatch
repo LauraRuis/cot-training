@@ -51,24 +51,41 @@ nvidia-smi > "$pilot_out/gpu.txt"
 cp scripts/serve_cheatbench_qwen.sbatch "$pilot_out/launch.sbatch"
 
 pilot_port=$((20000 + SLURM_JOB_ID % 20000))
-pilot_model=Qwen/Qwen3-4B
-pilot_revision=$(python -c 'from huggingface_hub import model_info; print(model_info("Qwen/Qwen3-4B").sha)')
+pilot_model="${PILOT_MODEL:-Qwen/Qwen3-4B}"
+pilot_gpu_memory="${PILOT_GPU_MEMORY:-0.85}"
+pilot_max_sequences="${PILOT_MAX_SEQUENCES:-2}"
+pilot_local_port="${PILOT_LOCAL_PORT:-8000}"
+pilot_extra_args=()
+if [[ "${PILOT_ENFORCE_EAGER:-0}" == 1 ]]; then
+    pilot_extra_args+=(--enforce-eager)
+fi
+if [[ -n "${PILOT_MAX_BATCHED_TOKENS:-}" ]]; then
+    pilot_extra_args+=(--enable-chunked-prefill --max-num-batched-tokens "$PILOT_MAX_BATCHED_TOKENS")
+fi
+pilot_revision="${PILOT_MODEL_REVISION:-}"
+if [[ -z "$pilot_revision" ]]; then
+    pilot_revision=$(python -c 'import sys; from huggingface_hub import model_info; print(model_info(sys.argv[1]).sha)' "$pilot_model")
+fi
 echo "$pilot_revision" > "$pilot_out/model-revision.txt"
 pilot_node=$(hostname -f)
-python - "$pilot_out/server.json" "$pilot_node" "$pilot_port" "$pilot_revision" <<'PY'
-import json, sys
+python - "$pilot_out/server.json" "$pilot_node" "$pilot_port" "$pilot_revision" "$pilot_model" "$pilot_gpu_memory" "$pilot_max_sequences" "${PILOT_ENFORCE_EAGER:-0}" <<'PY'
+import json, os, sys
 from pathlib import Path
 Path(sys.argv[1]).write_text(json.dumps({
     "host": sys.argv[2], "port": int(sys.argv[3]),
-    "model": "Qwen/Qwen3-4B", "model_revision": sys.argv[4],
+    "model": sys.argv[5], "model_revision": sys.argv[4],
     "context_length": 32768,
+    "gpu_memory_utilization": float(sys.argv[6]),
+    "max_num_seqs": int(sys.argv[7]), "enforce_eager": sys.argv[8] == "1",
+    "max_num_batched_tokens": int(os.environ.get("PILOT_MAX_BATCHED_TOKENS", "0")) or None,
 }, indent=2) + "\n")
 PY
 
 # Raw completions retain reasoning. Do not enable a reasoning parser here.
 python -m vllm.entrypoints.cli.main serve "$pilot_model" --revision "$pilot_revision" --tokenizer-revision "$pilot_revision" \
     --host 127.0.0.1 --port "$pilot_port" --dtype bfloat16 --max-model-len 32768 \
-    --gpu-memory-utilization 0.85 --max-num-seqs 2 > "$pilot_out/vllm.log" 2>&1 &
+    --gpu-memory-utilization "$pilot_gpu_memory" --max-num-seqs "$pilot_max_sequences" \
+    "${pilot_extra_args[@]}" > "$pilot_out/vllm.log" 2>&1 &
 pilot_server_pid=$!
 cleanup() {
     kill "$pilot_server_pid" 2>/dev/null || true
@@ -76,7 +93,7 @@ cleanup() {
 }
 trap cleanup EXIT
 pilot_ready=0
-for ((i=0; i<180; i++)); do
+for ((i=0; i<${PILOT_STARTUP_CHECKS:-180}; i++)); do
     if ! kill -0 "$pilot_server_pid" 2>/dev/null; then
         echo "vLLM failed: $pilot_out/vllm.log"
         tail -n 100 "$pilot_out/vllm.log"
@@ -93,8 +110,8 @@ if [[ "$pilot_ready" != 1 ]]; then
     tail -n 100 "$pilot_out/vllm.log"
     exit 1
 fi
-echo "READY: $pilot_node:$pilot_port model_revision=$pilot_revision"
+echo "READY: $pilot_node:$pilot_port model=$pilot_model model_revision=$pilot_revision"
 echo 'On your Mac, using your established CSAIL SSH configuration:'
-echo "ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -L 127.0.0.1:8000:127.0.0.1:$pilot_port lruis@$pilot_node"
-echo "Use --model-revision $pilot_revision for the local pilot. Artifacts: $pilot_out"
+echo "ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -L 127.0.0.1:$pilot_local_port:127.0.0.1:$pilot_port lruis@$pilot_node"
+echo "Use --model $pilot_model --model-revision $pilot_revision for the local pilot. Artifacts: $pilot_out"
 wait "$pilot_server_pid"
