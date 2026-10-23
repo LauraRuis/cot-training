@@ -17,5 +17,6 @@ data/
 results
 
 # Local scratch
+cheatbench_work/
 *.log
 *.err
