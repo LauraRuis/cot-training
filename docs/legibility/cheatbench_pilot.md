@@ -70,8 +70,56 @@ does not require a separate `vllm` shell executable. Package versions are
 recorded using Python metadata without requiring pip. Job 2820369 stopped at
 the old pip-based logging step; job 2820410 then revealed that the `vllm`
 executable was absent. Neither job served model requests.
+Job 2820450 reached Python startup but failed importing
+`watchfiles._rust_notify` in `llm_science_eval_env`. Module presence alone does
+not establish a working serving environment. Check the dedicated
+`/data/scratch/lruis/LLMScience/qwen36_vllm_env` before selecting it via
+`PILOT_VENV`; avoid altering a shared environment used by other experiments.
+The standalone launcher now includes the last 100 lines of the vLLM log in
+the main Slurm log on startup failure or timeout.
 
-It requests one H100 on `lingo-h100`, QoS `lingo-main`, account
+### Isolated watchfiles repair for the current environment
+
+The shared `llm_science_eval_env` must remain unchanged. The user authorized
+installing the same `watchfiles` version in a separate directory, used only
+by the CheatBench server. Submit this CPU-only, ten-minute job from the
+cluster project directory:
+
+```bash
+sbatch scripts/prepare_cheatbench_watchfiles.sbatch
+```
+
+The script locates uv on PATH or at `~/.local/bin/uv`, reads the existing
+watchfiles version without importing the broken package, and downloads a
+matching binary wheel into `cheatbench_work/server_overlays/<job-id>/site-packages`.
+Installation uses `--target`, `--no-deps` and `--only-binary`; it does not install
+pip into the base environment or upgrade any dependencies. Python bytecode
+writes are disabled during setup and serving. The native module and the vLLM
+API-server import chain must load successfully before a `READY` file is written.
+This import check does not load weights or prove GPU execution works. If it
+reveals another dependency issue, setup stops and records the traceback without
+installing any other packages.
+
+Read `/data/scratch/lruis/cheatbench_watchfiles-<job-id>.log`. On success it
+prints the exact server submission command, equivalent to:
+
+```bash
+PILOT_VENV=/data/scratch/lruis/LLMScience/llm_science_eval_env \
+PILOT_WATCHFILES_OVERLAY=/data/scratch/lruis/cot-training/cheatbench_work/server_overlays/SETUP_JOB_ID \
+sbatch scripts/serve_cheatbench_qwen.sbatch
+```
+
+The server checks that the replacement belongs to the selected environment and
+matches its Python and package versions, then prepends its directory to
+`PYTHONPATH` for that job only. It records the replacement manifest with the
+server artifacts. Other jobs receive no override unless they are explicitly
+submitted with this variable. Do not add this path to shell startup files or
+the original environment's activation script. Four subprocess tests verify
+replacement selection, unchanged base-package files, and rejection of missing
+backends, version mismatches and incomplete setup. Cluster execution remains
+the user's responsibility.
+
+The model-server job requests one H100 on `lingo-h100`, QoS `lingo-main`, account
 `lingo`, for three hours. It needs no Apptainer or prepared task directory. It
 pins a Qwen3-4B revision for model and tokenizer and listens on compute-node
 loopback only. Read `/data/scratch/lruis/cheatbench_server-<job-id>.log`; when

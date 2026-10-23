@@ -18,6 +18,11 @@ fi
 
 cd "${PILOT_CODE_ROOT:-/data/scratch/lruis/cot-training}"
 source "${PILOT_VENV:-/data/scratch/lruis/LLMScience/llm_science_eval_env}/bin/activate"
+export PYTHONDONTWRITEBYTECODE=1
+if [[ -n "${PILOT_WATCHFILES_OVERLAY:-}" ]]; then
+    python -m contract.cheatbench.watchfiles_overlay "$PILOT_WATCHFILES_OVERLAY"
+    export PYTHONPATH="$PILOT_WATCHFILES_OVERLAY/site-packages${PYTHONPATH:+:$PYTHONPATH}"
+fi
 python - <<'PY'
 import sys
 from importlib.util import find_spec
@@ -32,6 +37,9 @@ export TRITON_HOME=/data/scratch/lruis/.triton
 export XDG_CACHE_HOME=/data/scratch/lruis/.cache
 pilot_out="${PILOT_WORK_ROOT:-/data/scratch/lruis/cot-training/cheatbench_work}/servers/$SLURM_JOB_ID"
 mkdir -p "$pilot_out"
+if [[ -n "${PILOT_WATCHFILES_OVERLAY:-}" ]]; then
+    cp "$PILOT_WATCHFILES_OVERLAY/manifest.json" "$pilot_out/watchfiles-overlay.json"
+fi
 python - <<'PY' > "$pilot_out/packages.txt"
 from importlib.metadata import distributions
 print("\n".join(sorted(
@@ -69,14 +77,22 @@ cleanup() {
 trap cleanup EXIT
 pilot_ready=0
 for ((i=0; i<180; i++)); do
-    kill -0 "$pilot_server_pid" 2>/dev/null || { echo "vLLM failed: $pilot_out/vllm.log"; exit 1; }
+    if ! kill -0 "$pilot_server_pid" 2>/dev/null; then
+        echo "vLLM failed: $pilot_out/vllm.log"
+        tail -n 100 "$pilot_out/vllm.log"
+        exit 1
+    fi
     if curl --max-time 2 -fsS "http://127.0.0.1:$pilot_port/health" >/dev/null 2>&1; then
         pilot_ready=1
         break
     fi
     sleep 10
 done
-[[ "$pilot_ready" == 1 ]] || { echo "vLLM startup timed out: $pilot_out/vllm.log"; exit 1; }
+if [[ "$pilot_ready" != 1 ]]; then
+    echo "vLLM startup timed out: $pilot_out/vllm.log"
+    tail -n 100 "$pilot_out/vllm.log"
+    exit 1
+fi
 echo "READY: $pilot_node:$pilot_port model_revision=$pilot_revision"
 echo 'On your Mac, using your established CSAIL SSH configuration:'
 echo "ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -L 127.0.0.1:8000:127.0.0.1:$pilot_port lruis@$pilot_node"
