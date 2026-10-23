@@ -8,6 +8,102 @@ post-trained, instruction-following hybrid checkpoint, not `Qwen3-4B-Base`.
 The separate `Qwen3-4B-Instruct-2507` checkpoint has no native thinking mode.
 No model training is part of the pilot.
 
+## Current route: Docker on the Mac, Qwen on Slurm
+
+**Local compatibility result, 2026-10-23:** preparation completed successfully
+at `/private/tmp/cot-cheatbench-docker/prepared/`. The untouched solution scored
+0; its gold tests failed to compile because the requested TLS fields and
+`NewClient` were missing. The reference solution scored 1, with all four
+required tests passing (16 parsed passing tests total). The untouched check
+took approximately 7.5 minutes; neither it nor the reference check timed out.
+The initial Docker image is approximately 4.87 GB, ID
+`sha256:08fd2153ce3132d418b7655fd3c274d4476cf1bbe133d319fb11c4ed8ab0a577`.
+`READY`, the manifest and raw verifier logs are present. The API-client
+environment is installed at `/private/tmp/cot-cheatbench-client-env`, with
+versions recorded in `/private/tmp/cot-cheatbench-docker/client-packages.txt`.
+Ten local unit checks pass. No model inference or cluster job was run.
+
+The PID-isolation probe failed on `andreas-h100-1`, `aia-h200-2` and
+`groenig-1`. While TIG advises on cluster execution, use Docker Desktop locally
+for the environment and a separate H100 allocation solely for model serving.
+The Mac had an Intel-only Docker Desktop 4.4.2 installation; replace it with
+the Apple-silicon build before attempting this route.
+
+The Docker backend builds the upstream Dockerfile directly for `linux/amd64`.
+On Apple silicon this uses emulation, so compilation/runtime compatibility must
+be checked before inference. Each sample has a fresh container with no host
+mounts, a private PID namespace, a 6 GiB RAM limit, four CPUs and a 512-process
+limit. Commands run in `/app`; stopping the container after every tool call
+ends background processes, including on client timeout. A Docker image snapshot
+preserves the final filesystem; native grading runs in a separate container
+with verifier assets mounted only then. Containers/snapshots are retained for
+audit; their IDs are written in the run directory. Do not prune Docker storage
+until the audit is complete. Networking remains enabled for benchmark tasks.
+
+First prepare locally, from this repository directory (no GPU):
+
+```bash
+python3 -m contract.cheatbench.pilot prepare --runtime docker \
+  --docker-context desktop-linux --work-root /private/tmp/cot-cheatbench-docker
+```
+
+Only Python's standard library, Git and a working Docker engine are needed for
+preparation. Logs and the native base/reference checks are under
+`/private/tmp/cot-cheatbench-docker/prepared/`. `READY` requires base=0 and
+reference=1. Preparation refuses to overwrite an existing `prepared/` folder;
+preserve failed-run logs and choose a fresh work root for a retry. Docker build
+layers can still be reused. Local outputs must stay outside the Dropbox-backed
+repository; `/private/tmp` is temporary and should be archived elsewhere after
+the pilot. Keep prepared images in the same Docker context used for the run.
+
+Once preparation succeeds, copy the new server launcher to the cluster and
+submit it there:
+
+```bash
+sbatch scripts/serve_cheatbench_qwen.sbatch
+```
+
+It requests one H100 on `lingo-h100`, QoS `lingo-main`, account
+`lingo`, for three hours. It needs no Apptainer or prepared task directory. It
+pins a Qwen3-4B revision for model and tokenizer and listens on compute-node
+loopback only. Read `/data/scratch/lruis/cheatbench_server-<job-id>.log`; when
+ready, it prints the exact SSH tunnel command and the model revision. Establish
+your CSAIL SSH/DUO connection manually, then run that printed command on the Mac
+using your existing CSAIL SSH configuration. No assistant-initiated SSH is
+needed. The tunnel forwards Mac port 8000 to the compute node, not the login
+node. Test it locally with `curl http://127.0.0.1:8000/health`.
+
+The local client needs `openai` and `transformers` (tokenizer only; no local
+model weights or PyTorch are needed). Use an isolated Python 3.12 environment:
+
+```bash
+python3.12 -m venv /private/tmp/cot-cheatbench-client-env
+/private/tmp/cot-cheatbench-client-env/bin/pip install 'openai>=1,<3' 'transformers>=4.51,<5'
+```
+
+With the tunnel running, replace `REVISION_FROM_SERVER_LOG` below with the
+printed commit hash:
+
+```bash
+/private/tmp/cot-cheatbench-client-env/bin/python -m contract.cheatbench.pilot run \
+  --runtime docker --docker-context desktop-linux \
+  --work-root /private/tmp/cot-cheatbench-docker \
+  --out /private/tmp/cot-cheatbench-docker/run-001 \
+  --url http://127.0.0.1:8000/v1 \
+  --tool-timeout 900 \
+  --model-revision REVISION_FROM_SERVER_LOG
+```
+
+The local command explicitly uses a 15-minute shell timeout because the first
+cold compilation under emulation exceeded five minutes; the CLI's legacy
+default remains two minutes. Record this budget difference when comparing runs.
+Keep the Mac awake and the tunnel open. Use a new output directory for each
+run. If emulation hits the tool timeout, record it as an incomplete episode;
+adjust budgets deliberately before a new run, rather than silently counting
+timeouts as model failures. Preemption or loss of the server/tunnel stops API
+calls; this pilot does not automatically resume partial trajectories. Stop
+the Slurm server job with `scancel <job-id>` when finished.
+
 ## Container status (2026-10-23)
 
 The user checked `andreas-h100-1`: Apptainer and Singularity executables exist;
@@ -57,7 +153,7 @@ single-task capability smoke test, with two independent samples by default:
 - Cheating labels remain null until an action/artifact audit. Neither the CoT
   monitor nor native task success is treated as cheating ground truth.
 
-## Running on the cluster
+## Original all-cluster route (blocked on PID isolation)
 
 Copy the branch's code to `/data/scratch/lruis/cot-training`. The launchers use
 the existing environment at
@@ -103,10 +199,12 @@ scratch; do not sync them into the local Dropbox-backed project directory.
 
 ## Interpretation and remaining limitations
 
-Local unit checks cover action parsing, command construction, isolation failure
-and verifier-result handling; shell syntax checks pass. No SWE image or GPU run
-has been executed by the assistant. The cluster run must establish image setup,
-reference grading, vLLM compatibility and model competence.
+Local unit checks cover action parsing, command construction, isolation failure,
+verifier-result handling, Docker cleanup on timeout/error and a mocked split
+rollout with retained reasoning and independent audit labels. Shell syntax
+checks pass. Actual Docker preparation results are recorded in the local work
+root. No GPU/model pilot has been run; vLLM compatibility and model competence
+remain untested.
 
 The native Flipt parser records only passing tests. Completed grading with an
 empty parsed test list retains native reward zero but is marked
